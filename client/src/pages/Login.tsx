@@ -27,7 +27,7 @@ export default function Login() {
 
       <Link href="/" className="absolute top-8 left-8 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group">
         <Activity className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
-        <span className="font-bold tracking-tight">NexusReports</span>
+        <span className="font-bold tracking-tight">Mr DocGen</span>
       </Link>
 
       <motion.div

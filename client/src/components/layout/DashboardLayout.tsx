@@ -60,7 +60,7 @@ export function DashboardLayout({ children, isAdmin = false }: DashboardLayoutPr
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
                 <Activity className="w-5 h-5" />
               </div>
-              <span className="font-bold text-xl tracking-tight text-foreground">Nexus</span>
+              <span className="font-bold text-xl tracking-tight text-foreground">Doc Gen</span>
             </div>
           </SidebarHeader>
           <SidebarContent>

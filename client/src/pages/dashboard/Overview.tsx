@@ -39,33 +39,7 @@ export default function MemberOverview() {
             </CardContent>
           </Card>
         </motion.div>
-        
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Time Saved</CardTitle>
-              <Clock className="w-4 h-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">12.5 hrs</div>
-              <p className="text-xs text-muted-foreground mt-1">Estimated this month</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Productivity Score</CardTitle>
-              <TrendingUp className="w-4 h-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">98%</div>
-              <p className="text-xs text-muted-foreground mt-1">+4% from last week</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+        </div>
 
       <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
       <Card className="overflow-hidden">

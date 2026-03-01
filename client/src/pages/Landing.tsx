@@ -27,7 +27,7 @@ export default function Landing() {
               className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8"
             >
               <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
-              Introducing Nexus Reports 2.0
+              Introducing Mr DocGen Reports 2.0
             </motion.div>
             
             <motion.h1 
