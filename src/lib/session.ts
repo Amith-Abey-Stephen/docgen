@@ -14,7 +14,7 @@ function getCookieOptions() {
   };
 }
 
-export async function createSession(userId: string, role: "member" | "admin") {
+export async function createSession(userId: string, role: "member" | "admin" | "super_admin") {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, userId, getCookieOptions());
   cookieStore.set(ROLE_COOKIE, role, getCookieOptions());

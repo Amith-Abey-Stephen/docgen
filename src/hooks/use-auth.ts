@@ -11,6 +11,7 @@ type AuthContextValue = {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, name: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -42,38 +43,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    const data = await apiRequest<{ user: User; token: string }>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    setUser(data.user);
-    await queryClient.invalidateQueries();
-    setIsLoading(false);
-    router.push(data.user.role === "admin" ? "/admin" : "/dashboard");
+    try {
+      const data = await apiRequest<{ user: User; token: string }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      setUser(data.user);
+      await queryClient.invalidateQueries();
+      router.push(data.user.role === "super_admin" ? "/super-admin" : data.user.role === "admin" ? "/admin" : "/dashboard");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const register = async (email: string, name: string, password: string) => {
     setIsLoading(true);
-    const data = await apiRequest<{ user: User; token: string }>("/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, name, password }),
-    });
-    setUser(data.user);
-    await queryClient.invalidateQueries();
-    setIsLoading(false);
-    router.push(data.user.role === "admin" ? "/admin" : "/dashboard");
+    try {
+      const data = await apiRequest<{ user: User; token: string }>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, name, password }),
+      });
+      setUser(data.user);
+      await queryClient.invalidateQueries();
+      router.push(data.user.role === "super_admin" ? "/super-admin" : data.user.role === "admin" ? "/admin" : "/dashboard");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = async () => {
     setIsLoading(true);
-    await apiRequest<{ success: boolean }>("/api/auth/logout", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-    setUser(null);
-    queryClient.clear();
-    setIsLoading(false);
-    router.push("/");
+    try {
+      await apiRequest<{ success: boolean }>("/api/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      setUser(null);
+      queryClient.clear();
+      router.push("/");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const value = useMemo(
@@ -81,7 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       isAuthenticated: !!user,
-      isAdmin: user?.role === "admin",
+      isAdmin: user?.role === "admin" || user?.role === "super_admin",
+      isSuperAdmin: user?.role === "super_admin",
       login,
       register,
       logout,
@@ -101,7 +112,7 @@ export function useAuth() {
   return context;
 }
 
-export function useRequireAuth(adminOnly = false) {
+export function useRequireAuth(adminOnly = false, superAdminOnly = false) {
   const router = useRouter();
   const pathname = usePathname();
   const auth = useAuth();
@@ -116,10 +127,15 @@ export function useRequireAuth(adminOnly = false) {
       return;
     }
 
-    if (adminOnly && auth.user.role !== "admin") {
+    if (superAdminOnly && auth.user.role !== "super_admin") {
+      router.replace("/dashboard");
+      return;
+    }
+
+    if (adminOnly && !["admin", "super_admin"].includes(auth.user.role)) {
       router.replace("/dashboard");
     }
-  }, [adminOnly, auth.isLoading, auth.user, pathname, router]);
+  }, [adminOnly, auth.isLoading, auth.user, pathname, router, superAdminOnly]);
 
   return auth;
 }

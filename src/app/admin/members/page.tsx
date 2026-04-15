@@ -20,7 +20,7 @@ export default function MembersPage() {
   }
 
   return (
-    <DashboardLayout isAdmin>
+    <DashboardLayout mode="admin">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Platform Members</h1>

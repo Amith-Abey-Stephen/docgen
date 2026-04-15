@@ -54,7 +54,7 @@ export default function CreateReportPage() {
   }
 
   return (
-    <DashboardLayout isAdmin={user.role === "admin"}>
+    <DashboardLayout mode={user.role === "super_admin" ? "super_admin" : user.role === "admin" ? "admin" : "member"}>
       <div className="mx-auto max-w-5xl p-6">
         {!generated && (
           <Card>

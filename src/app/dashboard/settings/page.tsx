@@ -23,7 +23,7 @@ export default function DashboardSettingsPage() {
   };
 
   return (
-    <DashboardLayout isAdmin={user.role === "admin"}>
+    <DashboardLayout mode={user.role === "super_admin" ? "super_admin" : user.role === "admin" ? "admin" : "member"}>
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="mt-1 text-muted-foreground">Manage your account preferences and profile.</p>

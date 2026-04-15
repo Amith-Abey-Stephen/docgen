@@ -19,21 +19,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { 
   Activity, 
+  BarChart3,
   LayoutDashboard, 
   FileText, 
   History, 
   Settings, 
   LogOut,
-  Users
+  Users,
+  Building2,
+  ScrollText
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  isAdmin?: boolean;
+  mode?: "member" | "admin" | "super_admin";
 }
 
-export function DashboardLayout({ children, isAdmin = false }: DashboardLayoutProps) {
+export function DashboardLayout({ children, mode = "member" }: DashboardLayoutProps) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
 
@@ -52,7 +55,16 @@ export function DashboardLayout({ children, isAdmin = false }: DashboardLayoutPr
     { title: "Settings", url: "/admin/settings", icon: Settings },
   ];
 
-  const items = isAdmin ? adminItems : memberItems;
+  const superAdminItems = [
+    { title: "Overview", url: "/super-admin", icon: LayoutDashboard },
+    { title: "Users", url: "/super-admin/users", icon: Users },
+    { title: "Organizations", url: "/super-admin/organizations", icon: Building2 },
+    { title: "Analytics", url: "/super-admin/analytics", icon: BarChart3 },
+    { title: "Audit Logs", url: "/super-admin/audit-logs", icon: ScrollText },
+    { title: "Settings", url: "/super-admin/settings", icon: Settings },
+  ];
+
+  const items = mode === "super_admin" ? superAdminItems : mode === "admin" ? adminItems : memberItems;
 
   return (
     <SidebarProvider>
@@ -69,7 +81,7 @@ export function DashboardLayout({ children, isAdmin = false }: DashboardLayoutPr
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel className="text-xs font-medium text-muted-foreground px-4 py-2">
-                {isAdmin ? 'ADMINISTRATION' : 'MAIN MENU'}
+                {mode === "super_admin" ? "SUPER ADMIN" : mode === "admin" ? "ADMINISTRATION" : "MAIN MENU"}
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>

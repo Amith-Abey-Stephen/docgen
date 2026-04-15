@@ -1,12 +1,24 @@
 import mongoose from "mongoose";
-import type { InsertReport, InsertUser, Report, User } from "@/lib/schema";
+import type {
+  AuditLog,
+  InsertOrganization,
+  InsertReport,
+  InsertUser,
+  Organization,
+  Report,
+  SiteSettings,
+  SuperAdminAnalytics,
+  SuperAdminStats,
+  User,
+} from "@/lib/schema";
 import { connectToDatabase } from "@/lib/mongodb";
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
-  role: { type: String, enum: ["member", "admin"], default: "member" },
+  role: { type: String, enum: ["member", "admin", "super_admin"], default: "member" },
+  organizationId: { type: String, default: undefined },
 });
 
 const reportSchema = new mongoose.Schema({
@@ -14,6 +26,37 @@ const reportSchema = new mongoose.Schema({
   title: { type: String, required: true },
   details: { type: String, required: true },
   content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const organizationSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  slug: { type: String, required: true, unique: true },
+  description: { type: String, default: "" },
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const siteSettingsSchema = new mongoose.Schema({
+  platformName: { type: String, required: true },
+  supportEmail: { type: String, required: true },
+  defaultOrganizationName: { type: String, required: true },
+  maintenanceMode: { type: Boolean, default: false },
+  allowPublicSignup: { type: Boolean, default: true },
+  defaultUserRole: { type: String, enum: ["member", "admin", "super_admin"], default: "member" },
+  requireOrganizationForUsers: { type: Boolean, default: false },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+const auditLogSchema = new mongoose.Schema({
+  actorUserId: { type: String, default: undefined },
+  actorEmail: { type: String, default: undefined },
+  actorRole: { type: String, enum: ["member", "admin", "super_admin"], default: undefined },
+  action: { type: String, required: true },
+  entityType: { type: String, enum: ["user", "organization", "site_settings", "auth"], required: true },
+  entityId: { type: String, default: undefined },
+  message: { type: String, required: true },
+  metadata: { type: mongoose.Schema.Types.Mixed, default: undefined },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -36,14 +79,80 @@ reportSchema.set("toJSON", {
   },
 });
 
+organizationSchema.set("toJSON", {
+  virtuals: true,
+  transform: (_doc, ret: Record<string, unknown>) => {
+    ret.id = String(ret._id);
+    ret.createdAt = ret.createdAt instanceof Date ? ret.createdAt.toISOString() : ret.createdAt;
+    delete ret._id;
+    delete ret.__v;
+  },
+});
+
+siteSettingsSchema.set("toJSON", {
+  virtuals: true,
+  transform: (_doc, ret: Record<string, unknown>) => {
+    ret.id = String(ret._id);
+    ret.updatedAt = ret.updatedAt instanceof Date ? ret.updatedAt.toISOString() : ret.updatedAt;
+    delete ret._id;
+    delete ret.__v;
+  },
+});
+
+auditLogSchema.set("toJSON", {
+  virtuals: true,
+  transform: (_doc, ret: Record<string, unknown>) => {
+    ret.id = String(ret._id);
+    ret.createdAt = ret.createdAt instanceof Date ? ret.createdAt.toISOString() : ret.createdAt;
+    delete ret._id;
+    delete ret.__v;
+  },
+});
+
 const UserModel = mongoose.models.User || mongoose.model("User", userSchema);
 const ReportModel = mongoose.models.Report || mongoose.model("Report", reportSchema);
+const OrganizationModel = mongoose.models.Organization || mongoose.model("Organization", organizationSchema);
+const SiteSettingsModel = mongoose.models.SiteSettings || mongoose.model("SiteSettings", siteSettingsSchema);
+const AuditLogModel = mongoose.models.AuditLog || mongoose.model("AuditLog", auditLogSchema);
 
 export async function ensureSeedData() {
   await connectToDatabase();
 
+  let defaultOrganization = await OrganizationModel.findOne({ slug: "default-org" });
+  if (!defaultOrganization) {
+    defaultOrganization = await new OrganizationModel({
+      name: "Default Organization",
+      slug: "default-org",
+      description: "Seeded default organization",
+      isActive: true,
+    }).save();
+  }
+
+  const existingSettings = await SiteSettingsModel.findOne({});
+  if (!existingSettings) {
+    await new SiteSettingsModel({
+      platformName: "Mr DocGen",
+      supportEmail: "support@example.com",
+      defaultOrganizationName: "Default Organization",
+      maintenanceMode: false,
+      allowPublicSignup: true,
+      defaultUserRole: "member",
+      requireOrganizationForUsers: false,
+    }).save();
+  }
+
   const existingUsers = await UserModel.find({});
   let memberUser = existingUsers.find((user) => user.email === "member@example.com");
+
+  if (!existingUsers.find((user) => user.email === "superadmin@example.com")) {
+    await new UserModel({
+      email: "superadmin@example.com",
+      password: "password",
+      name: "Super Admin",
+      role: "super_admin",
+      organizationId: String(defaultOrganization._id),
+    }).save();
+  }
 
   if (!existingUsers.find((user) => user.email === "admin@example.com")) {
     await new UserModel({
@@ -51,6 +160,7 @@ export async function ensureSeedData() {
       password: "password",
       name: "Admin User",
       role: "admin",
+      organizationId: String(defaultOrganization._id),
     }).save();
   }
 
@@ -60,6 +170,7 @@ export async function ensureSeedData() {
       password: "password",
       name: "Member User",
       role: "member",
+      organizationId: String(defaultOrganization._id),
     }).save();
   }
 
@@ -110,6 +221,30 @@ export async function getUsers() {
   return users.map((user) => user.toJSON() as User);
 }
 
+export async function getScopedUsersForAdmin(adminUser: User) {
+  await connectToDatabase();
+  const query =
+    adminUser.role === "super_admin"
+      ? {}
+      : {
+          role: { $ne: "super_admin" },
+          ...(adminUser.organizationId ? { organizationId: adminUser.organizationId } : { organizationId: { $exists: false } }),
+        };
+  const users = await UserModel.find(query);
+  return users.map((user) => user.toJSON() as User);
+}
+
+export async function updateUser(id: string, input: Partial<InsertUser>) {
+  await connectToDatabase();
+  const user = await UserModel.findByIdAndUpdate(id, input, { new: true });
+  return user ? (user.toJSON() as User) : null;
+}
+
+export async function deleteUser(id: string) {
+  await connectToDatabase();
+  await UserModel.findByIdAndDelete(id);
+}
+
 export async function getReports() {
   await connectToDatabase();
   const reports = await ReportModel.find({}).sort({ createdAt: -1 });
@@ -122,6 +257,23 @@ export async function getReportsByUser(userId: string) {
   return reports.map((report) => report.toJSON() as Report);
 }
 
+export async function getScopedReportsForAdmin(adminUser: User) {
+  await connectToDatabase();
+
+  if (adminUser.role === "super_admin") {
+    return getReports();
+  }
+
+  const users = await UserModel.find(
+    adminUser.organizationId
+      ? { organizationId: adminUser.organizationId, role: { $ne: "super_admin" } }
+      : { organizationId: { $exists: false }, role: { $ne: "super_admin" } },
+  );
+  const userIds = users.map((user) => String(user._id));
+  const reports = await ReportModel.find({ userId: { $in: userIds } }).sort({ createdAt: -1 });
+  return reports.map((report) => report.toJSON() as Report);
+}
+
 export async function createReport(input: InsertReport) {
   await connectToDatabase();
   const report = new ReportModel({
@@ -130,4 +282,114 @@ export async function createReport(input: InsertReport) {
   });
   await report.save();
   return report.toJSON() as Report;
+}
+
+export async function getOrganizations() {
+  await connectToDatabase();
+  const organizations = await OrganizationModel.find({}).sort({ createdAt: -1 });
+  return organizations.map((organization) => organization.toJSON() as Organization);
+}
+
+export async function createOrganization(input: InsertOrganization) {
+  await connectToDatabase();
+  const organization = new OrganizationModel({
+    ...input,
+    isActive: input.isActive ?? true,
+  });
+  await organization.save();
+  return organization.toJSON() as Organization;
+}
+
+export async function updateOrganization(id: string, input: Partial<InsertOrganization>) {
+  await connectToDatabase();
+  const organization = await OrganizationModel.findByIdAndUpdate(id, input, { new: true });
+  return organization ? (organization.toJSON() as Organization) : null;
+}
+
+export async function deleteOrganization(id: string) {
+  await connectToDatabase();
+  await OrganizationModel.findByIdAndDelete(id);
+  await UserModel.updateMany({ organizationId: id }, { $unset: { organizationId: "" } });
+}
+
+export async function getSuperAdminStats(): Promise<SuperAdminStats> {
+  await connectToDatabase();
+  const [totalUsers, totalOrganizations, totalReports, totalMembers, totalAdmins, totalSuperAdmins, activeOrganizations] =
+    await Promise.all([
+      UserModel.countDocuments({}),
+      OrganizationModel.countDocuments({}),
+      ReportModel.countDocuments({}),
+      UserModel.countDocuments({ role: "member" }),
+      UserModel.countDocuments({ role: "admin" }),
+      UserModel.countDocuments({ role: "super_admin" }),
+      OrganizationModel.countDocuments({ isActive: true }),
+    ]);
+
+  return {
+    totalUsers,
+    totalOrganizations,
+    totalReports,
+    totalMembers,
+    totalAdmins,
+    totalSuperAdmins,
+    activeOrganizations,
+  };
+}
+
+export async function getSiteSettings() {
+  await connectToDatabase();
+  const settings = await SiteSettingsModel.findOne({});
+  return settings ? (settings.toJSON() as SiteSettings) : null;
+}
+
+export async function updateSiteSettings(input: Partial<Omit<SiteSettings, "id" | "updatedAt">>) {
+  await connectToDatabase();
+  const settings = await SiteSettingsModel.findOneAndUpdate(
+    {},
+    { ...input, updatedAt: new Date() },
+    { new: true, upsert: true },
+  );
+  return settings.toJSON() as SiteSettings;
+}
+
+export async function createAuditLog(input: Omit<AuditLog, "id" | "createdAt">) {
+  await connectToDatabase();
+  const log = new AuditLogModel(input);
+  await log.save();
+  return log.toJSON() as AuditLog;
+}
+
+export async function getAuditLogs(limit = 100) {
+  await connectToDatabase();
+  const logs = await AuditLogModel.find({}).sort({ createdAt: -1 }).limit(limit);
+  return logs.map((log) => log.toJSON() as AuditLog);
+}
+
+export async function getSuperAdminAnalytics(): Promise<SuperAdminAnalytics> {
+  await connectToDatabase();
+
+  const [roleCounts, orgStatusCounts, timelineRaw] = await Promise.all([
+    UserModel.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
+    OrganizationModel.aggregate([{ $group: { _id: "$isActive", count: { $sum: 1 } } }]),
+    ReportModel.aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+  ]);
+
+  return {
+    roleBreakdown: roleCounts.map((entry) => ({ name: String(entry._id), value: Number(entry.count) })),
+    organizationStatus: orgStatusCounts.map((entry) => ({
+      name: entry._id ? "active" : "inactive",
+      value: Number(entry.count),
+    })),
+    reportsTimeline: timelineRaw.map((entry) => ({ date: String(entry._id), reports: Number(entry.count) })),
+  };
 }

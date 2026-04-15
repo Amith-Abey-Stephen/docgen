@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
+const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/super-admin"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -20,7 +20,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname.startsWith("/admin") && role !== "admin") {
+  if (pathname.startsWith("/super-admin") && role !== "super_admin") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (pathname.startsWith("/admin") && !["admin", "super_admin"].includes(role ?? "")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -28,5 +32,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/super-admin/:path*"],
 };

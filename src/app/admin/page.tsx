@@ -17,7 +17,7 @@ export default function AdminPage() {
   }
 
   return (
-    <DashboardLayout isAdmin>
+    <DashboardLayout mode="admin">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Admin Overview</h1>
         <p className="mt-1 text-muted-foreground">System status and platform analytics.</p>

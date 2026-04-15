@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSession } from "@/lib/session";
-import { ensureSeedData, getUserByEmail } from "@/lib/storage";
+import { createAuditLog, ensureSeedData, getSiteSettings, getUserByEmail } from "@/lib/storage";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -11,6 +11,10 @@ const loginSchema = z.object({
 export async function POST(request: Request) {
   try {
     await ensureSeedData();
+    const settings = await getSiteSettings();
+    if (settings?.maintenanceMode) {
+      return NextResponse.json({ message: "The platform is currently in maintenance mode" }, { status: 503 });
+    }
     const input = loginSchema.parse(await request.json());
     const user = await getUserByEmail(input.email);
 
@@ -19,6 +23,16 @@ export async function POST(request: Request) {
     }
 
     await createSession(user.id, user.role);
+    await createAuditLog({
+      actorUserId: user.id,
+      actorEmail: user.email,
+      actorRole: user.role,
+      action: "auth.login",
+      entityType: "auth",
+      entityId: user.id,
+      message: `${user.email} logged in`,
+      metadata: {},
+    });
     return NextResponse.json({ user, token: "session-cookie" });
   } catch (error) {
     if (error instanceof z.ZodError) {
