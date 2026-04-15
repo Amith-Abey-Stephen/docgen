@@ -21,8 +21,10 @@ export function Navbar() {
         </Link>
         
         <div className="hidden md:flex items-center gap-8">
+          <a href="#about" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">About</a>
           <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Features</a>
           <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Pricing</a>
+          <a href="#contact" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Contact</a>
         </div>
 
         <div className="flex items-center gap-4">

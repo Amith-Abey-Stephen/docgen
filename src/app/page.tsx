@@ -1,13 +1,60 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, CheckCircle2, Shield, Zap } from "lucide-react";
+import { BarChart3, CheckCircle2, Globe, GraduationCap, Heart, Lightbulb, Mail, MapPin, Phone, Rocket, Send, Shield, Zap } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+
+const inquiryPaths = [
+  { value: "general", label: "General Inquiry" },
+  { value: "sales", label: "Sales & Pricing" },
+  { value: "support", label: "Technical Support" },
+  { value: "partnership", label: "Partnership Opportunities" },
+  { value: "feedback", label: "Product Feedback" },
+  { value: "other", label: "Other" },
+];
 
 export default function HomePage() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    inquiryPath: "",
+    subject: "",
+    message: "",
+  });
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.name || !form.email || !form.message) {
+      toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    toast({
+      title: "Message sent!",
+      description: "Thank you for reaching out. We'll get back to you within 24 hours.",
+      variant: "default",
+    });
+    setForm({ name: "", email: "", inquiryPath: "", subject: "", message: "" });
+    setLoading(false);
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
@@ -67,6 +114,72 @@ export default function HomePage() {
                 </Button>
               </Link>
             </motion.div>
+          </div>
+        </section>
+
+        <section id="about" className="py-24">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-16 max-w-3xl text-center">
+              <h2 className="mb-4 text-3xl font-bold md:text-4xl">About Mr DocGen</h2>
+              <p className="text-lg text-muted-foreground">Empowering institutions with intelligent reporting solutions.</p>
+            </div>
+
+            <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2">
+              <motion.div
+                initial={{ y: 30, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                className="flex flex-col justify-center space-y-6"
+              >
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary w-fit">
+                  <GraduationCap className="h-4 w-4" />
+                  A Product of Inovus Labs IEDC
+                </div>
+                <h3 className="text-2xl font-bold md:text-3xl">
+                  Built at the intersection of innovation and education
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Mr DocGen is a flagship product developed by <strong>Inovus Labs IEDC</strong> — fostering entrepreneurship and innovation in academic institutions. We believe that powerful reporting tools should be accessible to everyone, from student organizations to enterprise teams.
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Our mission is to transform how institutions handle documentation, making report generation faster, smarter, and more reliable. By leveraging cutting-edge technology, we help organizations save time and focus on what truly matters.
+                </p>
+                <div className="flex items-center gap-4 pt-4">
+                  <a
+                    href="https://inovuslabs.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                  >
+                    <Globe className="h-4 w-4" />
+                    Visit Inovus Labs
+                  </a>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ y: 30, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="grid grid-cols-2 gap-6"
+              >
+                {[
+                  { icon: Rocket, title: "Innovation First", desc: "Built with modern tech stack for scalability" },
+                  { icon: Lightbulb, title: "Education Driven", desc: "Designed for academic institutions" },
+                  { icon: Shield, title: "Secure & Reliable", desc: "Enterprise-grade security standards" },
+                  { icon: Heart, title: "Community Focused", desc: "Open to feedback and improvements" },
+                ].map((item, index) => (
+                  <div key={item.title} className="rounded-xl border bg-card p-6 hover-elevate">
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    <h4 className="mb-2 font-semibold">{item.title}</h4>
+                    <p className="text-sm text-muted-foreground">{item.desc}</p>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
           </div>
         </section>
 
@@ -149,6 +262,150 @@ export default function HomePage() {
                   </Button>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="py-24 bg-secondary/30">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              className="mx-auto mb-16 max-w-3xl text-center"
+            >
+              <h2 className="mb-4 text-3xl font-bold md:text-4xl">Get in Touch</h2>
+              <p className="text-lg text-muted-foreground">
+                Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+              </p>
+            </motion.div>
+
+            <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2">
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                viewport={{ once: true }}
+              >
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-2xl">Contact Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <MapPin className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Office Address</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          123 Innovation Drive, Suite 400<br />
+                          San Francisco, CA 94102<br />
+                          United States
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Mail className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Email Us</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          <a href="mailto:hello@mrdocgen.com" className="hover:text-primary transition-colors">hello@mrdocgen.com</a><br />
+                          <a href="mailto:support@mrdocgen.com" className="hover:text-primary transition-colors">support@mrdocgen.com</a><br />
+                          <a href="mailto:sales@mrdocgen.com" className="hover:text-primary transition-colors">sales@mrdocgen.com</a>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Phone className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Call Us</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          <a href="tel:+14155551234" className="hover:text-primary transition-colors">+1 (415) 555-1234</a><br />
+                          <span className="text-xs">Mon - Fri, 9AM - 6PM PST</span>
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                initial={{ x: 20, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                viewport={{ once: true }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Send us a Message</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Name *</Label>
+                          <Input id="name" name="name" value={form.name} onChange={handleChange} placeholder="John Doe" required />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email *</Label>
+                          <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="john@example.com" required />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="inquiryPath">Choose your Path *</Label>
+                        <select
+                          id="inquiryPath"
+                          name="inquiryPath"
+                          value={form.inquiryPath}
+                          onChange={handleChange}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          required
+                        >
+                          <option value="">Select inquiry type...</option>
+                          {inquiryPaths.map((path) => (
+                            <option key={path.value} value={path.value}>{path.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="subject">Subject</Label>
+                        <Input id="subject" name="subject" value={form.subject} onChange={handleChange} placeholder="How can we help?" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="message">Message *</Label>
+                        <Textarea
+                          id="message"
+                          name="message"
+                          value={form.message}
+                          onChange={handleChange}
+                          placeholder="Tell us more about your inquiry..."
+                          className="min-h-[100px]"
+                          required
+                        />
+                      </div>
+
+                      <Button type="submit" className="w-full rounded-xl" disabled={loading}>
+                        {loading ? (
+                          <>Sending...</>
+                        ) : (
+                          <>
+                            <Send className="mr-2 h-4 w-4" />
+                            Send Message
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </motion.div>
             </div>
           </div>
         </section>
