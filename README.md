@@ -23,16 +23,6 @@ The old split frontend/backend structure has been consolidated into a single Nex
 - `src/lib`
 - `public`
 
-Legacy folders from the pre-migration setup are no longer needed for runtime and can be removed when you want a cleaner repository history:
-
-- `client/`
-- `server/`
-- `shared/`
-- `script/`
-- `monolithic-nextjs/`
-- `vite.config.ts`
-- `components.json`
-- `tsc_output.txt`
 
 ## Tech Stack
 

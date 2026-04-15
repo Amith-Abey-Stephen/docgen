@@ -25,6 +25,7 @@ export default function SuperAdminSettingsPage() {
       | "supportEmail"
       | "defaultOrganizationName"
       | "maintenanceMode"
+      | "maintenanceMessage"
       | "allowPublicSignup"
       | "defaultUserRole"
       | "requireOrganizationForUsers"
@@ -34,6 +35,7 @@ export default function SuperAdminSettingsPage() {
     supportEmail: "",
     defaultOrganizationName: "",
     maintenanceMode: false,
+    maintenanceMessage: "The platform is currently in maintenance mode.",
     allowPublicSignup: true,
     defaultUserRole: "member",
     requireOrganizationForUsers: false,
@@ -46,6 +48,7 @@ export default function SuperAdminSettingsPage() {
         supportEmail: settings.supportEmail,
         defaultOrganizationName: settings.defaultOrganizationName,
         maintenanceMode: settings.maintenanceMode,
+        maintenanceMessage: settings.maintenanceMessage ?? "The platform is currently in maintenance mode.",
         allowPublicSignup: settings.allowPublicSignup,
         defaultUserRole: settings.defaultUserRole,
         requireOrganizationForUsers: settings.requireOrganizationForUsers,
@@ -142,6 +145,18 @@ export default function SuperAdminSettingsPage() {
                     </div>
                     <Switch checked={form.maintenanceMode} onCheckedChange={(checked) => setForm((current) => ({ ...current, maintenanceMode: checked }))} />
                   </div>
+                  {form.maintenanceMode && (
+                    <div className="rounded-lg border p-4">
+                      <Label htmlFor="maintenanceMessage" className="font-medium">Maintenance message</Label>
+                      <p className="mb-2 text-sm text-muted-foreground">Custom message shown to users during maintenance.</p>
+                      <Input
+                        id="maintenanceMessage"
+                        value={form.maintenanceMessage}
+                        onChange={(event) => setForm((current) => ({ ...current, maintenanceMessage: event.target.value }))}
+                        placeholder="The platform is currently in maintenance mode."
+                      />
+                    </div>
+                  )}
                   <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
                       <p className="font-medium">Allow public signup</p>

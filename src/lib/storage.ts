@@ -42,6 +42,7 @@ const siteSettingsSchema = new mongoose.Schema({
   supportEmail: { type: String, required: true },
   defaultOrganizationName: { type: String, required: true },
   maintenanceMode: { type: Boolean, default: false },
+  maintenanceMessage: { type: String, default: "The platform is currently in maintenance mode." },
   allowPublicSignup: { type: Boolean, default: true },
   defaultUserRole: { type: String, enum: ["member", "admin", "super_admin"], default: "member" },
   requireOrganizationForUsers: { type: Boolean, default: false },

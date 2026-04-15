@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Activity, ArrowRight } from "lucide-react";
+import { Activity, ArrowRight, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -11,11 +11,24 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+interface SiteSettings {
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+}
+
 export default function LoginPage() {
   const { login, isLoading } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => setSettings(data))
+      .catch(() => setSettings(null));
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -36,8 +49,20 @@ export default function LoginPage() {
     }
   };
 
+  const isMaintenanceMode = settings?.maintenanceMode ?? false;
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-secondary/30 p-4">
+      {isMaintenanceMode && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-amber-500/90 px-4 py-3 text-sm font-medium text-amber-950 backdrop-blur-sm"
+        >
+          <AlertTriangle className="h-4 w-4" />
+          <span>{settings?.maintenanceMessage || "The platform is currently in maintenance mode."}</span>
+        </motion.div>
+      )}
       <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-[40%] w-[40%] rounded-full bg-primary/10 blur-[100px]" />
       <div className="pointer-events-none absolute bottom-[-10%] right-[-10%] h-[40%] w-[40%] rounded-full bg-blue-400/10 blur-[100px]" />
 
@@ -61,28 +86,32 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 rounded-xl bg-background/50 transition-colors focus:bg-background" required />
+                <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 rounded-xl bg-background/50 transition-colors focus:bg-background" required disabled={isMaintenanceMode} />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
                   <a href="#" className="text-sm font-medium text-primary hover:underline">Forgot password?</a>
                 </div>
-                <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 rounded-xl bg-background/50 transition-colors focus:bg-background" required />
+                <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 rounded-xl bg-background/50 transition-colors focus:bg-background" required disabled={isMaintenanceMode} />
               </div>
-              <Button type="submit" className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base shadow-md transition-all hover:shadow-lg" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign In"}
-                {!isLoading && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
+              <Button type="submit" className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base shadow-md transition-all hover:shadow-lg" disabled={isLoading || isMaintenanceMode}>
+                {isMaintenanceMode ? "Maintenance Mode" : isLoading ? "Signing in..." : "Sign In"}
+                {!isMaintenanceMode && !isLoading && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
               </Button>
             </form>
           </CardContent>
           <CardFooter className="mt-2 flex flex-col items-center justify-center border-t border-border/50 pb-8 pt-6">
-            <p className="text-sm text-muted-foreground">
-              Don&apos;t have an account? <Link href="/signup" className="font-semibold text-primary hover:underline">Sign up</Link>
-            </p>
-            <p className="mt-4 max-w-xs text-center text-xs text-muted-foreground">
-              Demo accounts: `admin@example.com` / `password` and `member@example.com` / `password`.
-            </p>
+            {!isMaintenanceMode && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Don&apos;t have an account? <Link href="/signup" className="font-semibold text-primary hover:underline">Sign up</Link>
+                </p>
+                <p className="mt-4 max-w-xs text-center text-xs text-muted-foreground">
+                  Demo accounts: `admin@example.com` / `password` and `member@example.com` / `password`.
+                </p>
+              </>
+            )}
           </CardFooter>
         </Card>
       </motion.div>

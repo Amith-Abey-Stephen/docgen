@@ -47,6 +47,7 @@ export const siteSettingsSchema = z.object({
   supportEmail: z.string().email(),
   defaultOrganizationName: z.string().min(1),
   maintenanceMode: z.boolean().default(false),
+  maintenanceMessage: z.string().default("The platform is currently in maintenance mode."),
   allowPublicSignup: z.boolean().default(true),
   defaultUserRole: roleSchema.default("member"),
   requireOrganizationForUsers: z.boolean().default(false),
