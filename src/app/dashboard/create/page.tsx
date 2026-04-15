@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useCreateReport } from "@/hooks/use-reports";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CreateReportPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth();
   const { mutateAsync } = useCreateReport();
   const { toast } = useToast();
@@ -20,6 +22,10 @@ export default function CreateReportPage() {
   const [generated, setGenerated] = useState(false);
   const [output, setOutput] = useState("");
   const [form, setForm] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -49,8 +55,43 @@ export default function CreateReportPage() {
     }
   };
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading report builder...</div>;
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-5xl p-6">
+          <Card>
+            <CardContent className="space-y-4 p-6">
+              <Skeleton className="h-9 w-48" />
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ))}
+                <Skeleton className="h-12 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (

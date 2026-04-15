@@ -10,7 +10,7 @@ export function Footer() {
               <div className="w-6 h-6 rounded bg-primary flex items-center justify-center text-primary-foreground">
                 <Activity className="w-3 h-3" />
               </div>
-              <span className="font-bold text-lg text-foreground">NexusReports</span>
+              <span className="font-bold text-lg text-foreground">Mr DocGen</span>
             </div>
             <p className="text-muted-foreground max-w-sm">
               The premier professional reporting tool for modern SaaS teams. Generate insights faster with our intelligent automation platform.
@@ -37,7 +37,7 @@ export function Footer() {
         </div>
         
         <div className="mt-12 pt-8 border-t flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} NexusReports Inc. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Mr DocGen Inc. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
             <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>

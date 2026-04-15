@@ -1,20 +1,68 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { FileText, PlusCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useReports } from "@/hooks/use-reports";
 
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth();
   const { data: reports, isLoading } = useReports();
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading dashboard...</div>;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout>
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-5 w-72" />
+          </div>
+          <Skeleton className="h-11 w-36 rounded-xl" />
+        </div>
+        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4 rounded-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="mt-2 h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Skeleton className="mb-4 h-6 w-32" />
+        <Card>
+          <div className="divide-y">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -51,7 +99,20 @@ export default function DashboardPage() {
       <Card className="overflow-hidden">
         <div className="divide-y">
           {isLoading ? (
-            <div className="p-8 text-center text-muted-foreground">Loading activity...</div>
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </>
           ) : reports && reports.length > 0 ? (
             reports.slice(0, 3).map((report) => (
               <div key={report.id} className="flex items-center justify-between p-4 transition-colors hover:bg-secondary/40">

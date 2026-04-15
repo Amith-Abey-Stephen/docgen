@@ -1,19 +1,72 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { BarChart3, Building2, FileText, ShieldCheck, Users } from "lucide-react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useSuperAdminAnalytics, useSuperAdminStats } from "@/hooks/use-super-admin";
 
 export default function SuperAdminAnalyticsPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth(false, true);
   const { data: stats, isLoading } = useSuperAdminStats();
   const { data: analyticsData, isLoading: loadingAnalytics } = useSuperAdminAnalytics();
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading analytics...</div>;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout mode="super_admin">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-5 w-80" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="h-[320px]">
+              <Skeleton className="h-full w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-36" />
+            </CardHeader>
+            <CardContent className="h-[320px]">
+              <Skeleton className="h-full w-full" />
+            </CardContent>
+          </Card>
+        </div>
+        <Card className="mt-8">
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent className="h-[360px]">
+            <Skeleton className="h-full w-full" />
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
   const summaryCards = [
@@ -53,7 +106,9 @@ export default function SuperAdminAnalyticsPage() {
           </CardHeader>
           <CardContent className="h-[320px]">
             {loadingAnalytics ? (
-              <div className="text-muted-foreground">Loading chart...</div>
+              <div className="flex h-full items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -76,7 +131,9 @@ export default function SuperAdminAnalyticsPage() {
           </CardHeader>
           <CardContent className="h-[320px]">
             {loadingAnalytics ? (
-              <div className="text-muted-foreground">Loading chart...</div>
+              <div className="flex h-full items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -100,7 +157,9 @@ export default function SuperAdminAnalyticsPage() {
         </CardHeader>
         <CardContent className="h-[360px]">
           {loadingAnalytics ? (
-            <div className="text-muted-foreground">Loading chart...</div>
+            <div className="flex h-full items-center justify-center">
+              <Skeleton className="h-full w-full" />
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={analyticsData?.reportsTimeline ?? []}>

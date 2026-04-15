@@ -1,22 +1,65 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Eye, FileText, Search } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAdminReports } from "@/hooks/use-admin";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminReportsPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth(true);
   const { data: reports, isLoading } = useAdminReports();
   const { toast } = useToast();
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading reports...</div>;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout mode="admin">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-32" />
+            <Skeleton className="h-5 w-56" />
+          </div>
+          <Skeleton className="h-10 w-full max-w-xs rounded-full" />
+        </div>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader className="bg-secondary/50">
+                <TableRow>
+                  <TableHead className="pl-6 py-4">Title</TableHead>
+                  <TableHead>User ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Excerpt</TableHead>
+                  <TableHead className="pr-6 text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell className="pl-6 py-4"><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell className="pr-6"><Skeleton className="ml-auto h-8 w-16" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -46,9 +89,17 @@ export default function AdminReportsPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">Loading reports...</TableCell>
-                </TableRow>
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      <TableCell className="pl-6 py-4"><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell className="pr-6"><Skeleton className="ml-auto h-8 w-16" /></TableCell>
+                    </TableRow>
+                  ))}
+                </>
               ) : reports?.map((report) => (
                 <TableRow key={report.id} className="hover:bg-muted/30">
                   <TableCell className="flex items-center gap-2 pl-6 py-4 font-medium">

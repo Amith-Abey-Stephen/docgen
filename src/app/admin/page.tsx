@@ -1,19 +1,81 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Activity, FileText, Users } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminMembers, useAdminReports } from "@/hooks/use-admin";
 import { useRequireAuth } from "@/hooks/use-auth";
 
 export default function AdminPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth(true);
   const { data: members, isLoading: loadingMembers } = useAdminMembers();
   const { data: reports, isLoading: loadingReports } = useAdminReports();
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading admin overview...</div>;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout mode="admin">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-5 w-64" />
+        </div>
+        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="mt-2 h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="border-b pb-3 last:border-0">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="mt-2 h-3 w-32" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -72,7 +134,20 @@ export default function AdminPage() {
           <CardContent>
             <div className="space-y-4">
               {loadingMembers ? (
-                <p className="text-muted-foreground">Loading...</p>
+                <>
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-40" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                  ))}
+                </>
               ) : members?.slice(0, 4).map((member) => (
                 <div key={member.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -98,7 +173,14 @@ export default function AdminPage() {
           <CardContent>
             <div className="space-y-4">
               {loadingReports ? (
-                <p className="text-muted-foreground">Loading...</p>
+                <>
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="border-b pb-3 last:border-0">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="mt-2 h-3 w-32" />
+                    </div>
+                  ))}
+                </>
               ) : reports?.slice(0, 4).map((report) => (
                 <div key={report.id} className="flex flex-col gap-1 border-b pb-3 last:border-0 last:pb-0">
                   <p className="text-sm font-medium">{report.title}</p>

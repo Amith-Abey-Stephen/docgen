@@ -9,10 +9,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuditLogs, useSiteSettings, useUpdateSiteSettings } from "@/hooks/use-super-admin";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import type { SiteSettings } from "@/lib/schema";
 
 export default function SuperAdminSettingsPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading } = useRequireAuth(false, true);
   const { toast } = useToast();
   const { data: settings, isLoading: loadingSettings } = useSiteSettings();
@@ -42,6 +44,7 @@ export default function SuperAdminSettingsPage() {
   });
 
   useEffect(() => {
+    setMounted(true);
     if (settings) {
       setForm({
         platformName: settings.platformName,
@@ -56,8 +59,68 @@ export default function SuperAdminSettingsPage() {
     }
   }, [settings]);
 
-  if (isLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading settings...</div>;
+  if (!mounted || isLoading || !user) {
+    return (
+      <DashboardLayout mode="super_admin">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-5 w-96" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.2fr_1fr]">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-44" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {[1, 2].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                  <Skeleton className="h-6 w-11" />
+                </div>
+              ))}
+              <Skeleton className="h-10 w-32" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="border-b pb-3 last:border-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -74,7 +137,34 @@ export default function SuperAdminSettingsPage() {
           </CardHeader>
           <CardContent>
             {loadingSettings ? (
-              <div className="text-muted-foreground">Loading settings...</div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-44" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                    <Skeleton className="h-6 w-11" />
+                  </div>
+                ))}
+                <Skeleton className="h-10 w-32" />
+              </div>
             ) : (
               <form
                 className="space-y-6"
@@ -187,7 +277,19 @@ export default function SuperAdminSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {loadingLogs ? (
-              <div className="text-muted-foreground">Loading activity...</div>
+              <>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="border-b pb-3 last:border-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                ))}
+              </>
             ) : (
               logs?.map((log) => (
                 <div key={log.id} className="border-b pb-3 last:border-0">

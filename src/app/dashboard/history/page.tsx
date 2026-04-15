@@ -1,27 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, Download, FileText, Search } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useReports } from "@/hooks/use-reports";
 
 export default function HistoryPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth();
   const { data: reports, isLoading } = useReports();
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const filteredReports = reports?.filter((report) =>
     report.title.toLowerCase().includes(search.toLowerCase()) ||
     report.details.toLowerCase().includes(search.toLowerCase()),
   );
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading history...</div>;
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout>
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-5 w-64" />
+          </div>
+          <Skeleton className="h-10 w-full max-w-xs rounded-full" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="h-[200px]">
+              <CardHeader className="pb-3">
+                <div className="mb-2 flex items-start justify-between">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <Skeleton className="h-8 w-8" />
+                </div>
+                <Skeleton className="h-6 w-3/4" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (

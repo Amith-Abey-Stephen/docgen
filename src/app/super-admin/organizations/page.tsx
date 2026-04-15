@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ import { useCreateOrganization, useDeleteOrganization, useSuperAdminOrganization
 import type { Organization } from "@/lib/schema";
 
 export default function SuperAdminOrganizationsPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth(false, true);
   const { toast } = useToast();
   const { data: organizations, isLoading } = useSuperAdminOrganizations();
@@ -23,8 +25,64 @@ export default function SuperAdminOrganizationsPage() {
   const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
   const [form, setForm] = useState({ name: "", slug: "", description: "", isActive: true });
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading organization management...</div>;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout mode="super_admin">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-5 w-80" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.1fr_1.9fr]">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-40" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-36" />
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">Name</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="pr-6 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      <TableCell className="pl-6"><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell className="pr-6"><Skeleton className="ml-auto h-8 w-16" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const resetForm = () => {
@@ -109,9 +167,17 @@ export default function SuperAdminOrganizationsPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">Loading organizations...</TableCell>
-                  </TableRow>
+                  <>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <TableRow key={i}>
+                        <TableCell className="pl-6"><Skeleton className="h-4 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                        <TableCell className="pr-6"><Skeleton className="ml-auto h-8 w-16" /></TableCell>
+                      </TableRow>
+                    ))}
+                  </>
                 ) : organizations?.map((organization) => (
                   <TableRow key={organization.id}>
                     <TableCell className="pl-6 font-medium">{organization.name}</TableCell>

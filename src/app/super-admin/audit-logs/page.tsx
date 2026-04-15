@@ -1,16 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useAuditLogs } from "@/hooks/use-super-admin";
 
 export default function SuperAdminAuditLogsPage() {
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth(false, true);
   const { data: logs, isLoading } = useAuditLogs(200);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const filteredLogs = useMemo(() => {
     return (logs ?? []).filter((log) => {
@@ -19,8 +25,36 @@ export default function SuperAdminAuditLogsPage() {
     });
   }, [logs, search]);
 
-  if (authLoading || !user) {
-    return <div className="p-8 text-muted-foreground">Loading audit logs...</div>;
+  if (!mounted || authLoading || !user) {
+    return (
+      <DashboardLayout mode="super_admin">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-5 w-72" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="rounded-lg border p-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-64" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -37,7 +71,19 @@ export default function SuperAdminAuditLogsPage() {
         <CardContent className="space-y-4">
           <Input placeholder="Search logs..." value={search} onChange={(event) => setSearch(event.target.value)} />
           {isLoading ? (
-            <div className="text-muted-foreground">Loading logs...</div>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="rounded-lg border p-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-64" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="space-y-4">
               {filteredLogs.map((log) => (
