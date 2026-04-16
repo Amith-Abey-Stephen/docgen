@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { createSession } from "@/lib/session";
 import { createAuditLog, ensureSeedData, getSiteSettings, getUserByEmail } from "@/lib/storage";
 
@@ -17,9 +18,12 @@ export async function POST(request: Request) {
     }
     const input = loginSchema.parse(await request.json());
     const user = await getUserByEmail(input.email);
+    if (!user) {
+      return NextResponse.json({ message: "Email not found", field: "email" }, { status: 401 });
+    }
 
-    if (!user || user.password !== input.password) {
-      return NextResponse.json({ message: "Invalid email or password" }, { status: 401 });
+    if (!(await bcrypt.compare(input.password, user.password))) {
+      return NextResponse.json({ message: "Incorrect password", field: "password" }, { status: 401 });
     }
 
     await createSession(user.id, user.role);

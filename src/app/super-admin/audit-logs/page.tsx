@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,19 +87,41 @@ export default function SuperAdminAuditLogsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredLogs.map((log) => (
-                <div key={log.id} className="rounded-lg border p-4">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-medium break-words md:truncate">{log.message}</p>
-                      <p className="text-sm text-muted-foreground break-words">
-                        {log.action} · {log.entityType} · {log.actorEmail ?? "system"}
-                      </p>
+              {filteredLogs.map((log) => {
+                const isDelete = log.action.toLowerCase().includes("delete");
+                const isCreate = log.action.toLowerCase().includes("create");
+                const isUpdate = log.action.toLowerCase().includes("update");
+                const isAuth = log.entityType === "auth";
+
+                return (
+                  <div
+                    key={log.id}
+                    className={cn(
+                      "rounded-lg border p-4 transition-colors hover:bg-muted/50",
+                      isDelete && "border-red-100 bg-red-50/30",
+                      isCreate && "border-green-100 bg-green-50/30",
+                      isUpdate && "border-blue-100 bg-blue-50/30",
+                      isAuth && "border-purple-100 bg-purple-50/30"
+                    )}
+                  >
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-medium break-words">{log.message}</p>
+                        <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          <span className="rounded bg-background px-1.5 py-0.5 border shadow-sm">{log.action}</span>
+                          <span className="rounded bg-background px-1.5 py-0.5 border shadow-sm">{log.entityType}</span>
+                          <span className="rounded bg-background px-1.5 py-0.5 border shadow-sm truncate max-w-[200px]">
+                            {log.actorEmail ?? "system"}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                        {new Date(log.createdAt).toLocaleString()}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground shrink-0">{new Date(log.createdAt).toLocaleString()}</span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

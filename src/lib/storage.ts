@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import type {
   AuditLog,
   InsertOrganization,
@@ -119,8 +120,10 @@ const AuditLogModel = mongoose.models.AuditLog || mongoose.model("AuditLog", aud
 export async function ensureSeedData() {
   await connectToDatabase();
 
-  let defaultOrganization = await OrganizationModel.findOne({ slug: "default-org" });
-  if (!defaultOrganization) {
+  const existingOrgs = await OrganizationModel.find({});
+  let defaultOrganization = existingOrgs[0];
+
+  if (existingOrgs.length === 0) {
     defaultOrganization = await new OrganizationModel({
       name: "Default Organization",
       slug: "default-org",
@@ -143,36 +146,43 @@ export async function ensureSeedData() {
   }
 
   const existingUsers = await UserModel.find({});
-  let memberUser = existingUsers.find((user) => user.email === "member@example.com");
+  const hasSuperAdmin = existingUsers.some((u) => u.role === "super_admin");
+  let memberUser = existingUsers.find((u) => u.role === "member") || null;
 
-  if (!existingUsers.find((user) => user.email === "superadmin@example.com")) {
+  if (!hasSuperAdmin) {
+    const hashedPassword = await bcrypt.hash("password", 10);
     await new UserModel({
       email: "superadmin@example.com",
-      password: "password",
+      password: hashedPassword,
       name: "Super Admin",
       role: "super_admin",
-      organizationId: String(defaultOrganization._id),
+      organizationId: undefined,
     }).save();
   }
 
-  if (!existingUsers.find((user) => user.email === "admin@example.com")) {
-    await new UserModel({
-      email: "admin@example.com",
-      password: "password",
-      name: "Admin User",
-      role: "admin",
-      organizationId: String(defaultOrganization._id),
-    }).save();
-  }
+  // Only seed additional default accounts if the database is effectively empty
+  if (existingUsers.length < 2) {
+    if (!existingUsers.find((u) => u.email === "admin@example.com")) {
+      const hashedPassword = await bcrypt.hash("password", 10);
+      await new UserModel({
+        email: "admin@example.com",
+        password: hashedPassword,
+        name: "Admin User",
+        role: "admin",
+        organizationId: String(defaultOrganization._id),
+      }).save();
+    }
 
-  if (!memberUser) {
-    memberUser = await new UserModel({
-      email: "member@example.com",
-      password: "password",
-      name: "Member User",
-      role: "member",
-      organizationId: String(defaultOrganization._id),
-    }).save();
+    if (!memberUser) {
+      const hashedPassword = await bcrypt.hash("password", 10);
+      memberUser = await new UserModel({
+        email: "member@example.com",
+        password: hashedPassword,
+        name: "Member User",
+        role: "member",
+        organizationId: String(defaultOrganization._id),
+      }).save();
+    }
   }
 
   const existingReports = await ReportModel.find({});
@@ -208,8 +218,10 @@ export async function getUserByEmail(email: string) {
 
 export async function createUser(input: InsertUser) {
   await connectToDatabase();
+  const hashedPassword = await bcrypt.hash(input.password, 10);
   const user = new UserModel({
     ...input,
+    password: hashedPassword,
     role: input.role ?? "member",
   });
   await user.save();
@@ -237,7 +249,11 @@ export async function getScopedUsersForAdmin(adminUser: User) {
 
 export async function updateUser(id: string, input: Partial<InsertUser>) {
   await connectToDatabase();
-  const user = await UserModel.findByIdAndUpdate(id, input, { new: true });
+  const updateData = { ...input };
+  if (updateData.password) {
+    updateData.password = await bcrypt.hash(updateData.password, 10);
+  }
+  const user = await UserModel.findByIdAndUpdate(id, updateData, { new: true });
   return user ? (user.toJSON() as User) : null;
 }
 

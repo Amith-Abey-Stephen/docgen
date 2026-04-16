@@ -117,11 +117,11 @@ export default function CreateReportPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="students">Students</Label>
+                    <Label htmlFor="students">Participant Count</Label>
                     <Input id="students" name="students" type="number" onChange={handleChange} />
                   </div>
                   <div>
-                    <Label htmlFor="faculties">Faculties</Label>
+                    <Label htmlFor="faculties">Faculty Count</Label>
                     <Input id="faculties" name="faculties" type="number" onChange={handleChange} />
                   </div>
                 </div>

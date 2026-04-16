@@ -104,18 +104,20 @@ export default function SuperAdminSettingsPage() {
             <CardHeader>
               <Skeleton className="h-6 w-32" />
             </CardHeader>
-            <CardContent className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="border-b pb-3 last:border-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
+            <CardContent>
+              <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                  <div key={i} className="border-b pb-3 last:border-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                      <Skeleton className="h-3 w-24" />
                     </div>
-                    <Skeleton className="h-3 w-24" />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -275,34 +277,36 @@ export default function SuperAdminSettingsPage() {
           <CardHeader>
             <CardTitle>Audit History</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {loadingLogs ? (
-              <>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="border-b pb-3 last:border-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-48" />
-                        <Skeleton className="h-3 w-32" />
+          <CardContent>
+            <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
+              {loadingLogs ? (
+                <>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="border-b pb-3 last:border-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                        <Skeleton className="h-3 w-24" />
                       </div>
-                      <Skeleton className="h-3 w-24" />
                     </div>
+                  ))}
+                </>
+              ) : (
+                logs?.map((log) => (
+                  <div key={log.id} className="border-b pb-3 last:border-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <p className="font-medium break-words">{log.message}</p>
+                      <span className="text-xs text-muted-foreground shrink-0">{new Date(log.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground break-words">
+                      {log.action} | {log.entityType} | {log.actorEmail ?? "system"}
+                    </p>
                   </div>
-                ))}
-              </>
-            ) : (
-              logs?.map((log) => (
-                <div key={log.id} className="border-b pb-3 last:border-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <p className="font-medium break-words">{log.message}</p>
-                    <span className="text-xs text-muted-foreground shrink-0">{new Date(log.createdAt).toLocaleString()}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground break-words">
-                    {log.action} | {log.entityType} | {log.actorEmail ?? "system"}
-                  </p>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

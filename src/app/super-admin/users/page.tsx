@@ -116,6 +116,9 @@ export default function SuperAdminUsersPage() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
+      const isSuperAdmin = form.role === "super_admin";
+      const organizationId = isSuperAdmin ? undefined : (form.organizationId || undefined);
+
       if (editingUser) {
         await updateUser.mutateAsync({
           id: editingUser.id,
@@ -123,7 +126,7 @@ export default function SuperAdminUsersPage() {
             name: form.name,
             email: form.email,
             role: form.role as User["role"],
-            organizationId: form.organizationId || undefined,
+            organizationId,
             ...(form.password ? { password: form.password } : {}),
           },
         });
@@ -134,7 +137,7 @@ export default function SuperAdminUsersPage() {
           email: form.email,
           password: form.password,
           role: form.role as User["role"],
-          organizationId: form.organizationId || undefined,
+          organizationId,
         });
         toast({ title: "User created", description: "A new managed user has been created." });
       }
@@ -180,12 +183,23 @@ export default function SuperAdminUsersPage() {
               </div>
               <div>
                 <Label htmlFor="organizationId">Organization</Label>
-                <select id="organizationId" value={form.organizationId} onChange={(event) => setForm((current) => ({ ...current, organizationId: event.target.value }))} className="h-10 w-full rounded-md border px-3">
-                  <option value="">No organization</option>
+                <select
+                  id="organizationId"
+                  value={form.role === "super_admin" ? "" : form.organizationId}
+                  onChange={(event) => setForm((current) => ({ ...current, organizationId: event.target.value }))}
+                  disabled={form.role === "super_admin"}
+                  className="h-10 w-full rounded-md border px-3 disabled:bg-muted disabled:opacity-70"
+                >
+                  <option value="">{form.role === "super_admin" ? "Not Required (Super Admin)" : "No organization"}</option>
                   {organizations?.map((organization) => (
-                    <option key={organization.id} value={organization.id}>{organization.name}</option>
+                    <option key={organization.id} value={organization.id}>
+                      {organization.name}
+                    </option>
                   ))}
                 </select>
+                {form.role === "super_admin" && (
+                  <p className="mt-1 text-[10px] text-muted-foreground italic">Super admins have global access and do not require organization assignment.</p>
+                )}
               </div>
               <div className="flex gap-3">
                 <Button type="submit" className="flex-1">
