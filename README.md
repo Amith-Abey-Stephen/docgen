@@ -56,6 +56,8 @@ The old split frontend/backend structure has been consolidated into a single Nex
 - Analytics charts for role breakdown, organization status, and report activity timeline
 - Seeded demo data and default platform records
 - Middleware-based access control for member, admin, and super-admin routes
+- **Cloudinary-powered Branding**: Admins can customize organization letterheads and seals with automatic cloud asset management and organization-slug-based naming.
+- **Advanced Report Management**: High-fidelity report preview with PDF export, conditional branding, and secure deletion workflows.
 
 ## Folder Structure
 
@@ -140,6 +142,9 @@ Example:
 
 ```env
 DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/docgen
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 Use [.env.example](/d:/Main%20Project/Anirudhan/docgen/.env.example) as the template.
@@ -239,8 +244,13 @@ npm run start
 
 ### Admin
 
-- `GET /api/admin/members`
-- `GET /api/admin/reports`
+- GET /api/admin/members
+- GET /api/admin/reports
+- DELETE /api/admin/reports/:id
+- GET /api/admin/organization
+- PATCH /api/admin/organization
+- POST /api/admin/organization/upload
+- DELETE /api/admin/organization/upload
 
 ### Super Admin
 

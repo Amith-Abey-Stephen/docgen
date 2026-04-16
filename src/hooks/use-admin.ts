@@ -15,3 +15,26 @@ export function useAdminReports() {
     queryFn: () => apiRequest<Report[]>("/api/admin/reports", { method: "GET" }),
   });
 }
+
+export function useAdminOrganization() {
+  return useQuery({
+    queryKey: ["admin-organization"],
+    queryFn: () => apiRequest<any>("/api/admin/organization", { method: "GET" }),
+  });
+}
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+export function useUpdateAdminOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) =>
+      apiRequest<any>("/api/admin/organization", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organization"] });
+    },
+  });
+}

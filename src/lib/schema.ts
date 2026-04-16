@@ -21,6 +21,13 @@ export const insertOrganizationSchema = z.object({
   slug: z.string().min(1),
   description: z.string().optional(),
   isActive: z.boolean().default(true).optional(),
+  headerTitle: z.string().optional(),
+  headerSubtitle: z.string().optional(),
+  footerText: z.string().optional(),
+  headerImage: z.string().optional(),
+  footerImage: z.string().optional(),
+  headerImagePublicId: z.string().optional(),
+  footerImagePublicId: z.string().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -30,7 +37,17 @@ export type InsertReport = z.infer<typeof insertReportSchema>;
 export type Report = InsertReport & { id: string; content: string; createdAt: string };
 
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
-export type Organization = InsertOrganization & { id: string; createdAt: string };
+export type Organization = InsertOrganization & { 
+  id: string; 
+  createdAt: string;
+  headerTitle?: string;
+  headerSubtitle?: string;
+  footerText?: string;
+  headerImage?: string;
+  footerImage?: string;
+  headerImagePublicId?: string;
+  footerImagePublicId?: string;
+};
 
 export type SuperAdminStats = {
   totalUsers: number;

@@ -35,6 +35,13 @@ const organizationSchema = new mongoose.Schema({
   slug: { type: String, required: true, unique: true },
   description: { type: String, default: "" },
   isActive: { type: Boolean, default: true },
+  headerTitle: { type: String, default: "" },
+  headerSubtitle: { type: String, default: "" },
+  footerText: { type: String, default: "" },
+  headerImage: { type: String, default: "" },
+  footerImage: { type: String, default: "" },
+  headerImagePublicId: { type: String, default: "" },
+  footerImagePublicId: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -291,14 +298,27 @@ export async function getScopedReportsForAdmin(adminUser: User) {
   return reports.map((report) => report.toJSON() as Report);
 }
 
+export function generateReportContent(details: string) {
+  return `Generated comprehensive report based on: "${details}".\n\nThis entails a detailed breakdown of the strategic objectives, key performance indicators, and actionable insights derived from the provided context. The automated analysis highlights significant opportunities for growth and potential risk factors to mitigate.`;
+}
+
+export async function deleteReport(id: string) {
+  await connectToDatabase();
+  await ReportModel.findByIdAndDelete(id);
+}
+
 export async function createReport(input: InsertReport) {
   await connectToDatabase();
   const report = new ReportModel({
     ...input,
-    content: `Generated comprehensive report based on: "${input.details}".\n\nThis entails a detailed breakdown of the strategic objectives, key performance indicators, and actionable insights derived from the provided context. The automated analysis highlights significant opportunities for growth and potential risk factors to mitigate.`,
+    content: generateReportContent(input.details),
   });
   await report.save();
   return report.toJSON() as Report;
+}
+
+export async function previewReport(details: string) {
+  return generateReportContent(details);
 }
 
 export async function getOrganizations() {
@@ -311,7 +331,6 @@ export async function createOrganization(input: InsertOrganization) {
   await connectToDatabase();
   const organization = new OrganizationModel({
     ...input,
-    isActive: input.isActive ?? true,
   });
   await organization.save();
   return organization.toJSON() as Organization;
@@ -319,8 +338,20 @@ export async function createOrganization(input: InsertOrganization) {
 
 export async function updateOrganization(id: string, input: Partial<InsertOrganization>) {
   await connectToDatabase();
-  const organization = await OrganizationModel.findByIdAndUpdate(id, input, { new: true });
-  return organization ? (organization.toJSON() as Organization) : null;
+  const organization = await OrganizationModel.findByIdAndUpdate(
+    id,
+    { $set: input },
+    { new: true }
+  );
+  if (!organization) return null;
+  return organization.toJSON() as Organization;
+}
+
+export async function getOrganizationById(id: string) {
+  await connectToDatabase();
+  const organization = await OrganizationModel.findById(id);
+  if (!organization) return null;
+  return organization.toJSON() as Organization;
 }
 
 export async function deleteOrganization(id: string) {

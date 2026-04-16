@@ -24,3 +24,27 @@ export function useCreateReport() {
     },
   });
 }
+export function usePreviewReport() {
+  return useMutation({
+    mutationFn: (details: string) =>
+      apiRequest<{ content: string }>("/api/reports/preview", {
+        method: "POST",
+        body: JSON.stringify({ details }),
+      }),
+  });
+}
+
+export function useDeleteReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiRequest<{ success: boolean }>(`/api/reports/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+    },
+  });
+}
