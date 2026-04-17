@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSession } from "@/lib/session";
-import { createAuditLog, createUser, ensureSeedData, getSiteSettings, getUserByEmail } from "@/lib/storage";
+import { createAuditLog, createUser, ensureSeedData, getSiteSettings, getUserByEmail, updateUser } from "@/lib/storage";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -24,7 +24,9 @@ export async function POST(request: Request) {
     }
 
     const user = await createUser({ ...input, role: settings?.defaultUserRole ?? "member" });
-    await createSession(user.id, user.role);
+    const sessionId = crypto.randomUUID();
+    await updateUser(user.id, { currentSessionId: sessionId });
+    await createSession(user.id, user.role, sessionId);
     await createAuditLog({
       actorUserId: user.id,
       actorEmail: user.email,
