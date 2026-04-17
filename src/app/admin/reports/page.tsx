@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -250,20 +251,31 @@ export default function AdminReportsPage() {
                     <DialogTitle className="text-xl font-bold text-slate-900">
                       {selectedReport.title}
                     </DialogTitle>
-                    <p className="text-xs text-slate-500 font-medium">Generated on {new Date(selectedReport.createdAt).toLocaleDateString()} | By {selectedReport.userName}</p>
+                    <DialogDescription className="text-xs text-slate-500 font-medium">
+                      Generated on {new Date(selectedReport.createdAt).toLocaleDateString()} | By {selectedReport.userName}
+                    </DialogDescription>
                   </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden sm:flex border-2 font-bold h-10 rounded-full hover:bg-slate-50 transition-colors">
                     <Printer className="mr-2 h-4 w-4" /> Print
                   </Button>
-                  <Button size="sm" onClick={downloadPDF} disabled={downloading} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 font-bold h-10 rounded-full px-6 transition-transform active:scale-95">
+                  <Button size="sm" onClick={downloadPDF} disabled={downloading} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 font-bold h-10 rounded-full px-4 sm:px-6 transition-transform active:scale-95">
                     {downloading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Download className="mr-2 h-4 w-4" />
                     )}
-                    Export PDF
+                    <span className="hidden sm:inline">Export PDF</span>
+                    <span className="sm:hidden">PDF</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setSelectedReport(null)}
+                    className="h-10 w-10 rounded-full hover:bg-slate-100 md:hidden"
+                  >
+                    <X className="h-5 w-5 text-slate-500" />
                   </Button>
                 </div>
               </div>

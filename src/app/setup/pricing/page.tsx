@@ -44,6 +44,9 @@ export default function PricingPage() {
 
   const handleSelect = (planName: string) => {
     setSelecting(planName);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("pendingPlan", planName.toLowerCase());
+    }
     // Simulate a brief "payment processing" delay
     setTimeout(() => {
       router.push("/setup/create");

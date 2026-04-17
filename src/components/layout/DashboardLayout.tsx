@@ -69,7 +69,8 @@ export function DashboardLayout({ children, mode = "member" }: DashboardLayoutPr
     { title: "Settings", url: "/super-admin/settings", icon: Settings },
   ];
 
-  const items = mode === "super_admin" ? superAdminItems : mode === "admin" ? adminItems : memberItems;
+  const activeMode = mode !== "member" ? mode : (user?.role || "member");
+  const items = activeMode === "super_admin" ? superAdminItems : activeMode === "admin" ? adminItems : memberItems;
 
   return (
     <SidebarProvider>
@@ -89,7 +90,7 @@ export function DashboardLayout({ children, mode = "member" }: DashboardLayoutPr
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel className="text-xs font-medium text-muted-foreground px-4 py-2">
-                {mode === "super_admin" ? "SUPER ADMIN" : mode === "admin" ? "ADMINISTRATION" : "MAIN MENU"}
+                {activeMode === "super_admin" ? "SUPER ADMIN" : activeMode === "admin" ? "ADMINISTRATION" : "MAIN MENU"}
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>

@@ -30,6 +30,7 @@ export const insertOrganizationSchema = z.object({
   footerImage: z.string().optional(),
   headerImagePublicId: z.string().optional(),
   footerImagePublicId: z.string().optional(),
+  plan: z.string().default("starter").optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -87,6 +88,7 @@ export type AuditLog = {
   entityId?: string;
   message: string;
   metadata?: Record<string, unknown>;
+  organizationId?: string;
   createdAt: string;
 };
 

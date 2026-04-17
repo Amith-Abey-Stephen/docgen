@@ -25,12 +25,17 @@ export default function CreateOrganizationSetupPage() {
     e.preventDefault();
     if (!form.name) return;
     
+    const pendingPlan = typeof window !== "undefined" ? sessionStorage.getItem("pendingPlan") : "starter";
+    
     setIsCreating(true);
     try {
       await apiRequest("/api/organizations/create", {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, plan: pendingPlan }),
       });
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("pendingPlan");
+      }
       await refreshUser();
       toast({ title: "Workspace Ready", description: "Your organization has been successfully created." });
       

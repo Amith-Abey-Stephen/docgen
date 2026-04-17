@@ -44,6 +44,7 @@ const organizationSchema = new mongoose.Schema({
   footerImage: { type: String, default: "" },
   headerImagePublicId: { type: String, default: "" },
   footerImagePublicId: { type: String, default: "" },
+  plan: { type: String, default: "starter" },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -67,6 +68,7 @@ const auditLogSchema = new mongoose.Schema({
   entityType: { type: String, enum: ["user", "organization", "site_settings", "auth"], required: true },
   entityId: { type: String, default: undefined },
   message: { type: String, required: true },
+  organizationId: { type: String, default: undefined },
   metadata: { type: mongoose.Schema.Types.Mixed, default: undefined },
   createdAt: { type: Date, default: Date.now },
 });
@@ -285,11 +287,15 @@ export async function deleteUser(id: string) {
   await UserModel.findByIdAndDelete(id);
 }
 
-export async function getReports() {
+export async function getReports(organizationId?: string) {
   await connectToDatabase();
-  const reports = await ReportModel.find({}).sort({ createdAt: -1 });
-  const users = await UserModel.find({});
-  const userMap = new Map(users.map((u) => [String(u._id), u.name]));
+  const userQuery = organizationId ? { organizationId } : {};
+  const usersInOrg = await UserModel.find(userQuery);
+  const userIdsInOrg = usersInOrg.map(u => String(u._id));
+  
+  const reports = await ReportModel.find({ userId: { $in: userIdsInOrg } }).sort({ createdAt: -1 });
+  const userMap = new Map(usersInOrg.map((u) => [String(u._id), u.name]));
+  
   return reports.map((report) => {
     const json = report.toJSON() as Report;
     return { ...json, userName: userMap.get(json.userId) || "Unknown User" };
@@ -369,6 +375,40 @@ export async function getOrganizations() {
   return organizations.map((organization) => organization.toJSON() as Organization);
 }
 
+export async function getOrganizationsWithStats() {
+  await connectToDatabase();
+  const orgs = await OrganizationModel.find({}).sort({ createdAt: -1 });
+  
+  // Aggregate counts to avoid N+1 queries
+  const userStats = await UserModel.aggregate([
+    { $group: { _id: "$organizationId", count: { $sum: 1 } } }
+  ]);
+  
+  // For reports, we need to map them through users
+  const reports = await ReportModel.find({});
+  const users = await UserModel.find({});
+  const userToOrg = new Map(users.map(u => [String(u._id), u.organizationId]));
+  
+  const reportStats = new Map<string, number>();
+  reports.forEach(r => {
+    const orgId = userToOrg.get(r.userId);
+    if (orgId) {
+      reportStats.set(orgId, (reportStats.get(orgId) || 0) + 1);
+    }
+  });
+
+  const userStatsMap = new Map(userStats.map(s => [String(s._id), s.count]));
+
+  return orgs.map(org => {
+    const json = org.toJSON() as Organization;
+    return {
+      ...json,
+      memberCount: userStatsMap.get(json.id) || 0,
+      reportCount: reportStats.get(json.id) || 0
+    };
+  });
+}
+
 export async function createOrganization(input: InsertOrganization) {
   await connectToDatabase();
   const organization = new OrganizationModel({
@@ -400,6 +440,20 @@ export async function deleteOrganization(id: string) {
   await connectToDatabase();
   await OrganizationModel.findByIdAndDelete(id);
   await UserModel.updateMany({ organizationId: id }, { $unset: { organizationId: "" } });
+}
+
+export async function getOrganizationStats(organizationId: string) {
+  await connectToDatabase();
+  const [memberCount, reportCount] = await Promise.all([
+    UserModel.countDocuments({ organizationId }),
+    ReportModel.countDocuments({ 
+        userId: { 
+            $in: await UserModel.find({ organizationId }).distinct("_id") 
+        } 
+    }),
+  ]);
+
+  return { memberCount, reportCount };
 }
 
 export async function getSuperAdminStats(): Promise<SuperAdminStats> {
@@ -449,9 +503,13 @@ export async function createAuditLog(input: Omit<AuditLog, "id" | "createdAt">) 
   return log.toJSON() as AuditLog;
 }
 
-export async function getAuditLogs(limit = 100) {
+export async function getAuditLogs(limit = 100, organizationId?: string, userId?: string) {
   await connectToDatabase();
-  const logs = await AuditLogModel.find({}).sort({ createdAt: -1 }).limit(limit);
+  const query: any = {};
+  if (organizationId) query.organizationId = organizationId;
+  if (userId) query.actorUserId = userId;
+  
+  const logs = await AuditLogModel.find(query).sort({ createdAt: -1 }).limit(limit);
   return logs.map((log) => log.toJSON() as AuditLog);
 }
 

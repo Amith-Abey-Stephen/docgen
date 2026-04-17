@@ -24,12 +24,18 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [settings, setSettings] = useState<SiteSettings | null>(null);
 
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const plan = searchParams?.get("plan");
+  
   useEffect(() => {
+    if (plan) {
+      sessionStorage.setItem("pendingPlan", plan);
+    }
     fetch("/api/settings")
       .then((res) => res.json())
       .then((data) => setSettings(data))
       .catch(() => setSettings(null));
-  }, []);
+  }, [plan]);
 
   const isMaintenanceMode = settings?.maintenanceMode ?? false;
 

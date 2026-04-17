@@ -257,9 +257,11 @@ export default function HomePage() {
                     ))}
                   </ul>
 
-                  <Button variant={plan.popular ? "default" : "outline"} className="w-full rounded-xl py-6 text-base">
-                    {plan.price === "Custom" ? "Contact Sales" : "Get Started"}
-                  </Button>
+                  <Link href={plan.price === "Custom" ? "/#contact" : `/signup?plan=${plan.name.toLowerCase()}`} className="w-full">
+                    <Button variant={plan.popular ? "default" : "outline"} className="w-full rounded-xl py-6 text-base">
+                      {plan.price === "Custom" ? "Contact Sales" : "Get Started"}
+                    </Button>
+                  </Link>
                 </motion.div>
               ))}
             </div>

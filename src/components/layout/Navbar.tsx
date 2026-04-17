@@ -46,7 +46,7 @@ export function Navbar() {
           <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             Sign In
           </Link>
-          <Link href="/login">
+          <Link href="/signup">
             <Button className="rounded-full px-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
               Get Started
             </Button>

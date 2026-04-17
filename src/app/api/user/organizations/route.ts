@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
-import { getOrganizationsByIds, getOrganizations } from "@/lib/storage";
+import { getOrganizationsByIds, getOrganizations, getOrganizationsWithStats } from "@/lib/storage";
 
 export async function GET() {
   const user = await getSessionUser();
@@ -8,9 +8,9 @@ export async function GET() {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  // Super admins see all organizations
+  // Super admins see all organizations with stats
   if (user.role === "super_admin") {
-    const orgs = await getOrganizations();
+    const orgs = await getOrganizationsWithStats();
     return NextResponse.json(orgs);
   }
 

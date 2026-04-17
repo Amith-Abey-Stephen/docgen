@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Building2, PlusCircle, Check, ArrowRight, Loader2, Users, MapPin, Globe, History } from "lucide-react";
+import { Building2, PlusCircle, Check, ArrowRight, Loader2, Users, MapPin, Globe, History, FileText } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -32,14 +32,22 @@ export default function OrganizationPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [stats, setStats] = useState<{ memberCount: number; reportCount: number } | null>(null);
 
   const fetchOrgs = async () => {
     setIsLoading(true);
     try {
       const data = await apiRequest<Organization[]>("/api/user/organizations", { method: "GET" });
       setOrganizations(data);
+      
+      // Fetch stats for the current organization if it exists
+      const current = data.find(o => o.id === user?.organizationId);
+      if (current) {
+        const statsData = await apiRequest<{ memberCount: number; reportCount: number }>(`/api/organizations/${current.id}/stats`);
+        setStats(statsData);
+      }
     } catch (error) {
-      console.error("Failed to fetch organizations", error);
+      console.error("Failed to fetch organizations or stats", error);
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +150,7 @@ export default function OrganizationPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-8 md:p-12 pt-4">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
                     <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                           <History className="h-6 w-6" />
@@ -150,6 +158,36 @@ export default function OrganizationPage() {
                        <div>
                           <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Joined Date</p>
                           <p className="font-bold text-slate-700">{new Date(currentOrg.createdAt).toLocaleDateString()}</p>
+                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                       <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
+                          <Users className="h-6 w-6" />
+                       </div>
+                       <div>
+                          <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Team Members</p>
+                          <p className="font-bold text-slate-700">{stats?.memberCount ?? '-'}</p>
+                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                       <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                          <FileText className="h-6 w-6" />
+                       </div>
+                       <div>
+                          <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Reports Generated</p>
+                          <p className="font-bold text-slate-700">{stats?.reportCount ?? '-'}</p>
+                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                       <div className="h-12 w-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                          <MapPin className="h-6 w-6" />
+                       </div>
+                       <div>
+                          <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Subscription</p>
+                          <p className="font-bold text-slate-700 capitalize">{(currentOrg as any).plan || 'Starter'}</p>
                        </div>
                     </div>
                  </div>
@@ -194,7 +232,17 @@ export default function OrganizationPage() {
                           </div>
                           <div className="overflow-hidden">
                             <h3 className="font-bold text-slate-900 text-lg truncate">{org.name}</h3>
-                            <p className="text-slate-500 text-sm truncate">{org.slug || 'no-slug'}</p>
+                            <div className="flex items-center gap-2 text-slate-500 text-sm">
+                               <p className="truncate">{org.slug || 'no-slug'}</p>
+                               {((org as any).memberCount !== undefined) && (
+                                 <>
+                                   <span className="h-1 w-1 rounded-full bg-slate-300"></span>
+                                   <p className="shrink-0">{(org as any).memberCount} members</p>
+                                   <span className="h-1 w-1 rounded-full bg-slate-300"></span>
+                                   <p className="shrink-0">{(org as any).reportCount} reports</p>
+                                 </>
+                               )}
+                            </div>
                           </div>
                         </div>
                         <Button 

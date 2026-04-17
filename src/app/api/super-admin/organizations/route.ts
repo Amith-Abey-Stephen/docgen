@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { insertOrganizationSchema } from "@/lib/schema";
 import { getSessionUser } from "@/lib/session";
-import { createAuditLog, createOrganization, ensureSeedData, getOrganizations } from "@/lib/storage";
+import { createAuditLog, createOrganization, ensureSeedData, getOrganizationsWithStats } from "@/lib/storage";
 
 export async function GET() {
   await ensureSeedData();
@@ -10,7 +10,7 @@ export async function GET() {
   if (!user || user.role !== "super_admin") {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(await getOrganizations());
+  return NextResponse.json(await getOrganizationsWithStats());
 }
 
 export async function POST(request: Request) {

@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       entityType: "auth",
       entityId: user.id,
       message: `${user.email} logged in`,
+      organizationId: user.organizationId,
       metadata: {},
     });
     return NextResponse.json({ user, token: "session-cookie" });

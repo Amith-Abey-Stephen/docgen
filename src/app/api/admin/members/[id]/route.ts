@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { createAuditLog, deleteUser, ensureSeedData, getUser, updateUser } from "@/lib/storage";
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     await ensureSeedData();
     const user = await getSessionUser();
     if (!user || !["admin", "super_admin"].includes(user.role)) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const targetUser = await getUser(params.id);
+    const targetUser = await getUser(id);
     if (!targetUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
@@ -34,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         }
     }
 
-    const updatedUser = await updateUser(params.id, input);
+    const updatedUser = await updateUser(id, input);
     if (!updatedUser) {
       return NextResponse.json({ message: "Failed to update user" }, { status: 400 });
     }
@@ -55,15 +56,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     await ensureSeedData();
     const user = await getSessionUser();
     if (!user || !["admin", "super_admin"].includes(user.role)) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const targetUser = await getUser(params.id);
+    const targetUser = await getUser(id);
     if (!targetUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
@@ -81,7 +83,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ message: "Cannot delete yourself" }, { status: 400 });
     }
 
-    await deleteUser(params.id);
+    await deleteUser(id);
 
     await createAuditLog({
       actorUserId: user.id,
@@ -89,7 +91,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       actorRole: user.role,
       action: "user.delete",
       entityType: "user",
-      entityId: params.id,
+      entityId: id,
       message: `${user.email} deleted user ${targetUser.email}`,
     });
 

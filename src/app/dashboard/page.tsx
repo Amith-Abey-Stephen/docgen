@@ -10,11 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useReports } from "@/hooks/use-reports";
+import { useActivity } from "@/hooks/use-activity";
+import { Activity as ActivityIcon } from "lucide-react";
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth();
-  const { data: reports, isLoading } = useReports();
+  const { data: reports, isLoading: reportsLoading } = useReports();
+  const { data: activity, isLoading: activityLoading } = useActivity();
 
   useEffect(() => {
     setMounted(true);
@@ -88,7 +91,7 @@ export default function DashboardPage() {
               <FileText className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{isLoading ? "-" : reports?.length || 0}</div>
+              <div className="text-3xl font-bold">{reportsLoading ? "-" : reports?.length || 0}</div>
               <p className="mt-1 text-xs text-muted-foreground">Generated from your latest activity</p>
             </CardContent>
           </Card>
@@ -98,7 +101,7 @@ export default function DashboardPage() {
       <h2 className="mb-4 text-xl font-bold">Recent Activity</h2>
       <Card className="overflow-hidden">
         <div className="divide-y">
-          {isLoading ? (
+          {activityLoading ? (
             <>
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center justify-between p-4">
@@ -113,25 +116,25 @@ export default function DashboardPage() {
                 </div>
               ))}
             </>
-          ) : reports && reports.length > 0 ? (
-            reports.slice(0, 3).map((report) => (
-              <div key={report.id} className="flex items-center justify-between p-4 transition-colors hover:bg-secondary/40">
+          ) : activity && activity.length > 0 ? (
+            activity.slice(0, 5).map((log) => (
+              <div key={log.id} className="flex items-center justify-between p-4 transition-colors hover:bg-secondary/40">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <FileText className="h-5 w-5 text-primary" />
+                    <ActivityIcon className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground">{report.title}</p>
-                    <p className="max-w-[200px] truncate text-sm text-muted-foreground sm:max-w-md">{report.details}</p>
+                    <p className="font-semibold text-foreground">{log.action.split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}</p>
+                    <p className="max-w-[200px] truncate text-sm text-muted-foreground sm:max-w-md">{log.message}</p>
                   </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {new Date(report.createdAt).toLocaleDateString()}
+                <div className="text-sm text-muted-foreground mr-4">
+                   {new Date(log.createdAt).toLocaleDateString()}
                 </div>
               </div>
             ))
           ) : (
-            <div className="p-8 text-center text-muted-foreground">No reports generated yet. Create your first one.</div>
+            <div className="p-8 text-center text-muted-foreground">No recent activity found.</div>
           )}
         </div>
       </Card>

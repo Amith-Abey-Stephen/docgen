@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { insertReportSchema } from "@/lib/schema";
 import { getSessionUser } from "@/lib/session";
-import { createReport, ensureSeedData, getReports, getReportsByUser } from "@/lib/storage";
+import { createReport, ensureSeedData, getReports, getReportsByUser, createAuditLog } from "@/lib/storage";
 
 export async function GET() {
   await ensureSeedData();
@@ -12,7 +12,9 @@ export async function GET() {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const reports = user.role === "admin" ? await getReports() : await getReportsByUser(user.id);
+  const reports = user.role === "super_admin" 
+    ? await getReports() 
+    : (user.role === "admin" ? await getReports(user.organizationId) : await getReportsByUser(user.id));
   return NextResponse.json(reports);
 }
 
@@ -27,6 +29,18 @@ export async function POST(request: Request) {
 
     const input = insertReportSchema.parse(await request.json());
     const report = await createReport({ ...input, userId: user.id });
+    
+    await createAuditLog({
+      actorUserId: user.id,
+      actorEmail: user.email,
+      actorRole: user.role,
+      action: "report.create",
+      entityType: "user",
+      entityId: report.id,
+      message: `${user.name} created report: ${report.title}`,
+      organizationId: user.organizationId,
+    });
+
     return NextResponse.json(report, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
-import { createOrganization, updateUser, getOrganizations } from "@/lib/storage";
+import { createOrganization, updateUser, getOrganizations, createAuditLog } from "@/lib/storage";
 import { insertOrganizationSchema } from "@/lib/schema";
 
 export async function POST(request: Request) {
@@ -47,6 +47,17 @@ export async function POST(request: Request) {
         organizationId: organization.id,
         role: newRole,
         adminOrganizationIds: newAdminOrgIds
+    });
+
+    await createAuditLog({
+      actorUserId: user.id,
+      actorEmail: user.email,
+      actorRole: user.role,
+      action: "organization.create",
+      entityType: "organization",
+      entityId: organization.id,
+      message: `${user.name} created organization: ${organization.name}`,
+      organizationId: organization.id,
     });
 
     return NextResponse.json(organization);
