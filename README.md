@@ -1,365 +1,102 @@
 # DocGen
 
-DocGen is a monolithic Next.js 15 application for report creation and platform management. It combines the public site, member workspace, admin tools, and a super-admin control plane in one App Router codebase.
+DocGen is a high-performance, monolithic Next.js 15 application designed for professional report generation and multi-tenant organization management. It provides a seamless experience for members, administrators, and platform-wide super admins.
 
-## What It Includes
+## 🚀 Key Features
 
-- Public landing, login, and signup flows
-- Member report creation, history, and account settings
-- Admin dashboards for organization-scoped user and report management
-- Super-admin platform management for users, organizations, settings, audit logs, stats, and analytics
-- Next.js route handlers for auth and all internal APIs
-- MongoDB via Mongoose for persistence and automatic seed data
-- Cookie-based session auth with middleware route protection
-- Tailwind CSS UI with React Query data hooks
+- **Multi-Tenant Architecture**: Support for multiple organizations with distinct branding, members, and data isolation.
+- **Single-Session Security**: Military-grade session management that prevents concurrent logins. Includes real-time cross-device invalidation and logout notifications.
+- **High-Fidelity Reporting**: Generate, preview, and manage professional documents with custom letterheads and seals.
+- **Dynamic Workspaces**: Instantly switch between multiple organizations directly from the dashboard.
+- **Advanced Admin Controls**: Scoped management for organization admins and a global control plane for super admins.
+- **Integrated Payments**: Ready-to-go Razorpay integration for subscription management.
+- **Cloud-Powered Assets**: Automatic management of organization branding via Cloudinary.
+- **Comprehensive Audit Logs**: Every critical action is tracked for security and accountability.
+- **Modern UI/UX**: Built with Framer Motion animations, sleek Lucide iconography, and a premium Glassmorphism-inspired design.
 
-## Current Architecture
+## 🛠 Tech Stack
 
-The old split frontend/backend structure has been consolidated into a single Next.js app. The active runtime code lives in:
+- **Framework**: Next.js 15 (App Router)
+- **Runtime**: React 18, TypeScript
+- **Styling**: Tailwind CSS
+- **State & Data**: TanStack Query (React Query)
+- **Database**: MongoDB with Mongoose (ODM)
+- **Security**: Bcrypt password hashing & SID-based secure sessions
+- **Validation**: Zod (Schema-first validation)
+- **UI Components**: Radix UI Primitives
+- **Visuals**: Framer Motion & Recharts
 
-- `src/app`
-- `src/components`
-- `src/hooks`
-- `src/lib`
-- `public`
+## 👥 User Roles
 
+- **Member**: Create and manage reports, view history, and handle personal settings.
+- **Admin**: Oversee organization-specific users, reports, and branding configurations.
+- **Super Admin**: Full platform oversight, including global analytics, audit logs, organization management, and site-wide settings.
 
-## Tech Stack
+## ⚙️ How It Works
 
-- Next.js 15
-- React 18
-- TypeScript
-- Tailwind CSS
-- TanStack Query
-- MongoDB / Mongoose
-- Zod
-- Radix UI
-- Framer Motion
-- Recharts
+### Frontend Architecture
+- **Route Protection**: Middleware-level access control based on user roles.
+- **Responsive Layouts**: Optimized for mobile, tablet, and desktop viewing.
+- **Session Handling**: `AuthContext` with real-time invalidation detection and user feedback.
 
-## Core Roles
+### Backend Infrastructure
+- **Serverless APIs**: Built using Next.js Route Handlers.
+- **Session Layer**: SID-based cookie sessions verified against the database for every request.
+- **Data Persistence**: Aggregated MongoDB lookups for performant analytics and search.
 
-- `member`: create reports, view history, manage own profile settings
-- `admin`: review organization-scoped users and reports
-- `super_admin`: manage the full platform, including users, organizations, settings, analytics, and audit logs
-
-## Major Features
-
-- Public auth with login, signup, logout, and current-session lookup
-- Member dashboard with report creation and report history
-- Admin overview, member listing, and report listing
-- Super-admin overview with platform-wide stats
-- User CRUD with role assignment and organization assignment
-- Organization CRUD with active/inactive status
-- Site settings CRUD
-- Audit logs for auth and management actions
-- Analytics charts for role breakdown, organization status, and report activity timeline
-- Seeded demo data and default platform records
-- Middleware-based access control for member, admin, and super-admin routes
-- **Cloudinary-powered Branding**: Admins can customize organization letterheads and seals with automatic cloud asset management and organization-slug-based naming.
-- **Advanced Report Management**: High-fidelity report preview with PDF export, conditional branding, and secure deletion workflows.
-
-## Folder Structure
+## 📂 Project Structure
 
 ```text
 src/
   app/
-    api/
-      admin/
-      auth/
-      reports/
-      super-admin/
-    admin/
-    dashboard/
-    login/
-    signup/
-    super-admin/
-    globals.css
-    layout.tsx
-    page.tsx
+    api/              # RESTful API Endpoints
+    admin/            # Admin Workspace
+    dashboard/        # Member Workspace
+    super-admin/      # Global Management
+    setup/            # Onboarding & Pricing
   components/
-    layout/
-    ui/
-    providers.tsx
-  hooks/
-    use-admin.ts
-    use-auth.ts
-    use-reports.ts
-    use-super-admin.ts
-    use-toast.ts
-  lib/
-    http.ts
-    mongodb.ts
-    queryClient.ts
-    schema.ts
-    session.ts
-    storage.ts
-public/
-middleware.ts
-next.config.ts
-postcss.config.js
-tailwind.config.ts
-tsconfig.json
+    layout/           # Shared Layout Components
+    ui/               # Reusable UI Primitives
+  hooks/              # Custom React Hooks (Auth, API, etc.)
+  lib/                # Database, Session, and Schema Definitions
 ```
 
-## How It Works
+## 🏁 Getting Started
 
-### Frontend
+### 1. Requirements
+Ensure you have Node.js 18+ and a MongoDB instance (Local or Atlas) ready.
 
-- App Router pages in `src/app` render the public site plus the member, admin, and super-admin dashboards
-- Shared layout and UI primitives live under `src/components`
-- Client-side API integration is handled through React Query hooks in `src/hooks`
-
-### Backend
-
-- API endpoints are implemented as Next route handlers in `src/app/api`
-- MongoDB connectivity is centralized in `src/lib/mongodb.ts`
-- Business logic, seed routines, and data access are handled in `src/lib/storage.ts`
-- Session creation and cookie handling live in `src/lib/session.ts`
-
-### Auth And Authorization
-
-Authentication uses cookie sessions:
-
-- `docgen_session` stores the logged-in user id
-- `docgen_role` stores the logged-in role
-
-Protected route groups:
-
-- `/dashboard/*` requires an authenticated user
-- `/admin/*` requires `admin` or `super_admin`
-- `/super-admin/*` requires `super_admin`
-
-The admin APIs are scoped to the admin's organization. Full platform management is reserved for super admins.
-
-## Environment Variables
-
-The app currently requires one environment variable:
-
-- `DATABASE_URL`
-
-Example:
-
-```env
-DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/docgen
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
-
-Use [.env.example](/d:/Main%20Project/Anirudhan/docgen/.env.example) as the template.
-
-## Getting Started
-
-### 1. Install dependencies
-
+### 2. Installation
 ```bash
 npm install
 ```
 
-### 2. Create your environment file
-
+### 3. Environment Setup
+Create a `.env` file from the provided template:
 ```bash
 cp .env.example .env
 ```
+Fill in your credentials for **MongoDB**, **Cloudinary**, and **Razorpay**.
 
-Then set `DATABASE_URL` to your MongoDB connection string.
-
-### 3. Run development
-
+### 4. Development Run
 ```bash
 npm run dev
 ```
+The app will be available at `http://localhost:3000`.
 
-### 4. Type-check
+### 5. Default Credentials (Seeded Data)
+If starting with an empty database, the app will auto-seed these users:
+- **Member**: `member@example.com` / `password`
+- **Admin**: `admin@example.com` / `password`
+- **Super Admin**: `superadmin@example.com` / `password`
 
-```bash
-npm run check
-```
+## 📦 Deployment
+The project is optimized for **Vercel**. Simply connect your GitHub repository and add the environment variables defined in `.env.example`.
 
-### 5. Build production
+## 🔒 Security
+- **Bcrypt**: All passwords are cryptographically hashed using salt.
+- **Session Locks**: Unique SID validation ensures cross-device security.
+- **Middleware**: Server-side route guards prevent unauthorized access to restricted layouts.
 
-```bash
-npm run build
-```
-
-### 6. Start production mode
-
-```bash
-npm run start
-```
-
-## Available Scripts
-
-- `npm run dev` starts Next.js in development mode
-- `npm run build` creates a production build
-- `npm run start` starts the production server
-- `npm run check` runs TypeScript type-checking
-
-## Application Routes
-
-### Public
-
-- `/`
-- `/login`
-- `/signup`
-
-### Member
-
-- `/dashboard`
-- `/dashboard/create`
-- `/dashboard/history`
-- `/dashboard/settings`
-
-### Admin
-
-- `/admin`
-- `/admin/create`
-- `/admin/members`
-- `/admin/reports`
-- `/admin/settings`
-
-### Super Admin
-
-- `/super-admin`
-- `/super-admin/users`
-- `/super-admin/organizations`
-- `/super-admin/analytics`
-- `/super-admin/audit-logs`
-- `/super-admin/settings`
-
-## API Routes
-
-### Auth
-
-- `GET /api/auth/me`
-- `POST /api/auth/login`
-- `POST /api/auth/register`
-- `POST /api/auth/logout`
-
-### Reports
-
-- `GET /api/reports`
-- `POST /api/reports`
-
-### Admin
-
-- GET /api/admin/members
-- GET /api/admin/reports
-- DELETE /api/admin/reports/:id
-- GET /api/admin/organization
-- PATCH /api/admin/organization
-- POST /api/admin/organization/upload
-- DELETE /api/admin/organization/upload
-
-### Super Admin
-
-- `GET /api/super-admin/stats`
-- `GET /api/super-admin/analytics`
-- `GET /api/super-admin/users`
-- `POST /api/super-admin/users`
-- `PATCH /api/super-admin/users/:id`
-- `DELETE /api/super-admin/users/:id`
-- `GET /api/super-admin/organizations`
-- `POST /api/super-admin/organizations`
-- `PATCH /api/super-admin/organizations/:id`
-- `DELETE /api/super-admin/organizations/:id`
-- `GET /api/super-admin/settings`
-- `PATCH /api/super-admin/settings`
-- `GET /api/super-admin/audit-logs`
-
-## Seed Data
-
-On first use, the app seeds baseline records if the database is empty.
-
-Seeded users:
-
-- `member@example.com` / `password`
-- `admin@example.com` / `password`
-- `superadmin@example.com` / `password`
-
-Seeded platform records:
-
-- a default organization
-- default site settings
-
-Seed logic lives in [src/lib/storage.ts](/d:/Main%20Project/Anirudhan/docgen/src/lib/storage.ts).
-
-## Site Settings
-
-Super admins can manage platform-level settings, including:
-
-- platform name
-- support email
-- default organization name
-- maintenance mode
-- public signup availability
-- default user role
-- organization requirement for new users
-
-These settings directly affect auth and user-creation behavior.
-
-## Audit Logging
-
-The platform records management and auth activity for auditing. Current log coverage includes:
-
-- login
-- logout
-- registration
-- user create, update, and delete
-- organization create, update, and delete
-- site settings updates
-
-Audit logs are exposed in the super-admin dashboard and via `GET /api/super-admin/audit-logs`.
-
-## Important Notes
-
-### Passwords Are Demo-Only
-
-Passwords are currently stored and compared directly. Replace this with hashed passwords before any real production use.
-
-### Sessions Are Simple Cookies
-
-The app stores user id and role in cookies. For production, use stronger session signing, expiration strategy, and invalidation.
-
-### Admin Scope Matters
-
-Admin access is intentionally narrower than super-admin access. Use the super-admin routes and APIs for platform-wide operations.
-
-### Tailwind In Production
-
-If styles work locally but not on Vercel, verify that `tailwind.config.ts`, `postcss.config.js`, and `src/app/globals.css` are committed and that the deployment is using the current monolithic Next.js root.
-
-## Suggested Cleanup
-
-If you want to fully finalize the migration, remove the legacy folders listed above and keep the repo centered on the Next.js app only.
-
-Recommended keep set:
-
-- `src/`
-- `public/`
-- `package.json`
-- `package-lock.json`
-- `next.config.ts`
-- `next-env.d.ts`
-- `middleware.ts`
-- `postcss.config.js`
-- `tailwind.config.ts`
-- `tsconfig.json`
-- `.env.example`
-- `.gitignore`
-- `README.md`
-
-## Verification
-
-Recent verification for this codebase has been done with:
-
-- `npm run check`
-
-## Next Improvements
-
-- Replace plain-text passwords with hashing
-- Add stronger session management
-- Add tests for auth, APIs, and middleware
-- Add organization membership workflows from the admin UI
-- Remove legacy migration leftovers from git completely
+---
+Built with ❤️ by the DocGen Team.

@@ -20,7 +20,7 @@ const plans = [
   },
   {
     name: "Professional",
-    price: "49",
+    price: "499",
     description: "The most popular choice for growing organizations.",
     features: ["Unlimited Reports", "Custom Branding", "5 Admin Seats", "Priority Support", "Advanced Analytics"],
     icon: Rocket,
@@ -96,7 +96,7 @@ export default function PricingPage() {
 
               <CardContent className="p-10 pt-4 flex-grow">
                 <div className="flex items-baseline gap-1 mb-8">
-                  <span className="text-5xl font-black tracking-tighter text-slate-900">${plan.price}</span>
+                  <span className="text-5xl font-black tracking-tighter text-slate-900">₹{plan.price}</span>
                   {plan.price !== "Custom" && <span className="text-slate-400 font-medium">/month</span>}
                 </div>
 

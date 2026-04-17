@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, CheckCircle2, Globe, GraduationCap, Heart, Lightbulb, Mail, MapPin, Phone, Rocket, Send, Shield, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, Check, CheckCircle2, Globe, GraduationCap, Heart, Lightbulb, Mail, MapPin, Phone, Rocket, Send, Shield, Zap } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -221,12 +221,11 @@ export default function HomePage() {
               <h2 className="mb-4 text-3xl font-bold md:text-4xl">Simple, transparent pricing</h2>
               <p className="text-lg text-muted-foreground">Choose the perfect plan for your team&apos;s reporting needs.</p>
             </div>
-
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-3">
               {[
-                { name: "Basic", price: "$29", desc: "Perfect for individuals and small teams.", features: ["50 Reports/month", "Standard Templates", "Email Support", "7-day History"] },
-                { name: "Pro", price: "$99", desc: "For growing organizations needing more power.", features: ["Unlimited Reports", "Custom Branding", "Priority Support", "Unlimited History", "Advanced Analytics"], popular: true },
-                { name: "Enterprise", price: "Custom", desc: "Dedicated solutions for large enterprises.", features: ["Everything in Pro", "Dedicated Account Manager", "SSO/SAML", "Custom Integrations", "SLA Guarantee"] },
+                { name: "Starter", price: "₹0", desc: "Perfect for small teams or trial projects.", features: ["Up to 10 Reports/mo", "Basic Templates", "1 Admin Seat", "Email Support"], icon: Zap, color: "blue" },
+                { name: "Professional", price: "₹499", desc: "The most popular choice for growing organizations.", features: ["Unlimited Reports", "Custom Branding", "5 Admin Seats", "Priority Support", "Advanced Analytics"], popular: true, icon: Rocket, color: "indigo" },
+                { name: "Enterprise", price: "Custom", desc: "Tailored solutions for large institutions.", features: ["Everything in Pro", "Bulk User Imports", "Custom Templates", "Dedicated Account Manager", "SSO Integration"], icon: Shield, color: "slate" },
               ].map((plan, index) => (
                 <motion.div
                   key={plan.name}
@@ -234,34 +233,51 @@ export default function HomePage() {
                   whileInView={{ y: 0, opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className={`relative flex flex-col rounded-3xl border bg-card p-8 ${plan.popular ? "z-10 scale-105 shadow-2xl shadow-primary/10 ring-2 ring-primary" : "shadow-lg hover-elevate"}`}
+                  className={`group relative flex flex-col rounded-[2.5rem] border-none bg-white p-10 ${plan.popular ? "z-10 scale-105 shadow-2xl shadow-primary/20 ring-2 ring-primary ring-offset-4" : "shadow-xl hover:-translate-y-2 transition-all duration-300"}`}
                 >
                   {plan.popular && (
-                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary-foreground">
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary-foreground shadow-lg">
                       Most Popular
                     </div>
                   )}
-                  <h3 className="mb-2 text-2xl font-bold">{plan.name}</h3>
-                  <p className="mb-6 h-12 text-muted-foreground">{plan.desc}</p>
-                  <div className="mb-6">
-                    <span className="text-4xl font-extrabold">{plan.price}</span>
-                    {plan.price !== "Custom" && <span className="text-muted-foreground">/mo</span>}
+                  
+                  <div className={`mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-primary/10 group-hover:text-primary`}>
+                    <plan.icon className="h-7 w-7" />
                   </div>
 
-                  <ul className="mb-8 flex-1 space-y-4">
+                  <h3 className="mb-2 text-2xl font-bold text-slate-900">{plan.name}</h3>
+                  <p className="mb-6 h-12 text-slate-500 text-sm leading-relaxed">{plan.desc}</p>
+                  
+                  <div className="mb-8 flex items-baseline gap-1">
+                    <span className="text-5xl font-black tracking-tighter text-slate-900">{plan.price}</span>
+                    {plan.price !== "Custom" && <span className="text-slate-400 font-medium">/mo</span>}
+                  </div>
+
+                  <ul className="mb-10 space-y-4 flex-grow">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-3 text-sm">
-                        <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
-                        <span className="font-medium text-foreground">{feature}</span>
+                      <li key={feature} className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                          <Check className="h-3 w-3 text-emerald-600" />
+                        </div>
+                        {feature}
                       </li>
                     ))}
                   </ul>
 
-                  <Link href={plan.price === "Custom" ? "/#contact" : `/signup?plan=${plan.name.toLowerCase()}`} className="w-full">
-                    <Button variant={plan.popular ? "default" : "outline"} className="w-full rounded-xl py-6 text-base">
-                      {plan.price === "Custom" ? "Contact Sales" : "Get Started"}
-                    </Button>
-                  </Link>
+                  <Button 
+                    asChild 
+                    className={`h-14 rounded-full font-bold text-lg shadow-lg transition-all active:scale-95 ${plan.popular ? "bg-primary shadow-primary/20" : "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200"}`}
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        sessionStorage.setItem("pendingPlan", plan.name.toLowerCase());
+                      }
+                    }}
+                  >
+                    <Link href="/signup">
+                      {plan.price === "$0" ? "Start for Free" : "Get Started"}
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                  </Button>
                 </motion.div>
               ))}
             </div>
