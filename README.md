@@ -4,12 +4,13 @@ DocGen is a high-performance, monolithic Next.js 15 application designed for pro
 
 ## 🚀 Key Features
 
+- **AI-Powered Elaboration**: Integrated Google Gemini AI to transform simple keywords into comprehensive, professional report narratives automatically.
 - **Multi-Tenant Architecture**: Support for multiple organizations with distinct branding, members, and data isolation.
 - **Single-Session Security**: Military-grade session management that prevents concurrent logins. Includes real-time cross-device invalidation and logout notifications.
-- **High-Fidelity Reporting**: Generate, preview, and manage professional documents with custom letterheads and seals.
+- **High-Fidelity Reporting**: Generate, preview, and manage professional documents with custom letterheads, seals, and intelligent page-breaking logic.
 - **Dynamic Workspaces**: Instantly switch between multiple organizations directly from the dashboard.
-- **Advanced Admin Controls**: Scoped management for organization admins and a global control plane for super admins.
-- **Integrated Payments**: Ready-to-go Razorpay integration for subscription management.
+- **Advanced Admin Controls**: Scoped management for organization admins with professional confirmation safeguards (Discard, Delete, Save & Exit).
+- **Integrated Payments & Email**: Built-in Razorpay for subscriptions and Resend for professional contact form handling.
 - **Cloud-Powered Assets**: Automatic management of organization branding via Cloudinary.
 - **Comprehensive Audit Logs**: Every critical action is tracked for security and accountability.
 - **Modern UI/UX**: Built with Framer Motion animations, sleek Lucide iconography, and a premium Glassmorphism-inspired design.
@@ -18,6 +19,8 @@ DocGen is a high-performance, monolithic Next.js 15 application designed for pro
 
 - **Framework**: Next.js 15 (App Router)
 - **Runtime**: React 18, TypeScript
+- **AI Engine**: Google Gemini API
+- **Email Service**: Resend SDK
 - **Styling**: Tailwind CSS
 - **State & Data**: TanStack Query (React Query)
 - **Database**: MongoDB with Mongoose (ODM)
