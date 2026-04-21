@@ -172,8 +172,10 @@ export default function PricingPage() {
 
               <CardContent className="p-10 pt-4 flex-grow">
                 <div className="flex items-baseline gap-1 mb-8">
-                  <span className="text-5xl font-black tracking-tighter text-slate-900">₹{plan.price}</span>
-                  {plan.price !== "Custom" && <span className="text-slate-400 font-medium">/month</span>}
+                  <span className="text-5xl font-black tracking-tighter text-slate-900">
+                    {plan.name === "Enterprise" ? "Custom" : `₹${plan.price}`}
+                  </span>
+                  {plan.name !== "Enterprise" && <span className="text-slate-400 font-medium">/month</span>}
                 </div>
 
                 <div className="space-y-4">
