@@ -4,6 +4,8 @@ DocGen is a high-performance, monolithic Next.js 15 application designed for pro
 
 ## 🚀 Key Features
 
+- **Secure OTP Signup**: Integrated **Resend** for two-step email verification, ensuring every new user is verified via a 6-digit code before account creation.
+- **Strict Password Security**: Real-time password strength enforcement (8+ chars, uppercase, lowercase, numbers, special chars) with an interactive UI checklist.
 - **AI-Powered Elaboration**: Integrated Google Gemini AI to transform simple keywords into comprehensive, professional report narratives automatically.
 - **Multi-Tenant Architecture**: Support for multiple organizations with distinct branding, members, and data isolation.
 - **Single-Session Security**: Military-grade session management that prevents concurrent logins. Includes real-time cross-device invalidation and logout notifications.
