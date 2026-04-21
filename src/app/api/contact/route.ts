@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await resend.emails.send({
       from: "DocGen Support <support@amith.site>",
-      to: ["support@inovuslabs.org", "contact.inovuslabs@gmail.com"],
+      to: ["anirudhanv51@gmail.com", "contact.inovuslabs@gmail.com"],
       subject: `New Inquiry: ${subject || inquiryPath}`,
       replyTo: email,
       html: `
