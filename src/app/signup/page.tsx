@@ -26,6 +26,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -48,6 +49,15 @@ export default function SignupPage() {
   const handleSendOtp = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!email || !name || !password) return;
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords mismatch",
+        description: "The passwords you entered do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSendingOtp(true);
     try {
@@ -198,6 +208,29 @@ export default function SignupPage() {
                         ))}
                       </motion.div>
                     )}
+
+                    {/* Confirm Password Field */}
+                    <div className="space-y-2 mt-4">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <Input 
+                        id="confirmPassword" 
+                        type={showPassword ? "text" : "password"} 
+                        value={confirmPassword} 
+                        onChange={(event) => setConfirmPassword(event.target.value)} 
+                        className={`h-12 rounded-xl bg-background/50 transition-all focus:bg-background ${
+                          confirmPassword && password !== confirmPassword ? "border-destructive ring-destructive/20" : 
+                          confirmPassword && password === confirmPassword ? "border-emerald-500 ring-emerald-500/20" : ""
+                        }`} 
+                        placeholder="Re-enter password"
+                        required 
+                        disabled={isMaintenanceMode} 
+                      />
+                      {confirmPassword && (
+                        <p className={`text-[10px] font-medium transition-colors ${password === confirmPassword ? "text-emerald-600" : "text-destructive"}`}>
+                          {password === confirmPassword ? "✓ Passwords match" : "✕ Passwords do not match"}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <Button type="submit" className="group mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base shadow-md transition-all hover:shadow-lg" disabled={sendingOtp || isMaintenanceMode}>
                     {sendingOtp ? "Sending Code..." : "Send Verification Code"}
