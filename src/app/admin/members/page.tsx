@@ -15,6 +15,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAdminMembers, useCreateAdminMember, useDeleteAdminMember, useUpdateAdminMember } from "@/hooks/use-admin";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +49,9 @@ export default function MembersPage() {
     password: "",
     role: "member",
   });
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -100,6 +113,16 @@ export default function MembersPage() {
     setEditingUser(null);
     setForm({ name: "", email: "", password: "", role: "member" });
     setIsDialogOpen(false);
+    setShowCancelDialog(false);
+  };
+
+  const handleCancelClick = () => {
+    const isDirty = form.name || form.email || form.password;
+    if (isDirty) {
+      setShowCancelDialog(true);
+    } else {
+      resetForm();
+    }
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -149,7 +172,9 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open) handleCancelClick();
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{editingUser ? "Edit Member" : "Add New Member"}</DialogTitle>
@@ -175,7 +200,7 @@ export default function MembersPage() {
               </select>
             </div>
             <div className="flex gap-3 justify-end mt-6">
-              <Button type="button" variant="outline" onClick={resetForm}>
+              <Button type="button" variant="outline" onClick={handleCancelClick}>
                 Cancel
               </Button>
               <Button type="submit">
@@ -185,6 +210,54 @@ export default function MembersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold">Discard changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved information in this form. If you close now, your progress will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-full">Continue Editing</AlertDialogCancel>
+            <AlertDialogAction onClick={resetForm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full px-6">
+              Discard & Close
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900">Remove Member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove <strong>{userToDelete?.name}</strong> from the organization. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={async () => {
+                if (!userToDelete) return;
+                try {
+                  await deleteMember.mutateAsync(userToDelete.id);
+                  toast({ title: "Member deleted", description: "The member was removed." });
+                } catch (error) {
+                  toast({ title: "Delete failed", description: error instanceof Error ? error.message : "Unable to delete member", variant: "destructive" });
+                } finally {
+                  setUserToDelete(null);
+                  setShowDeleteDialog(false);
+                }
+              }} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full px-6"
+            >
+              Delete Member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card>
         <CardContent className="p-0">
@@ -250,19 +323,13 @@ export default function MembersPage() {
                         >
                           <Pencil className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button
+                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={async () => {
-                            if (confirm("Are you sure you want to remove this member?")) {
-                                try {
-                                  await deleteMember.mutateAsync(member.id);
-                                  toast({ title: "Member deleted", description: "The member was removed." });
-                                } catch (error) {
-                                  toast({ title: "Delete failed", description: error instanceof Error ? error.message : "Unable to delete member", variant: "destructive" });
-                                }
-                            }
+                          onClick={() => {
+                            setUserToDelete(member);
+                            setShowDeleteDialog(true);
                           }}
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />

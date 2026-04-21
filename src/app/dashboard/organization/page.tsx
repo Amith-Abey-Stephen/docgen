@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Building2, PlusCircle, Check, ArrowRight, Loader2, Users, MapPin, Globe, History, FileText } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -22,6 +23,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function OrganizationPage() {
   const { user, refreshUser } = useAuth();
@@ -32,6 +43,7 @@ export default function OrganizationPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCancelCreate, setShowCancelCreate] = useState(false);
   const [stats, setStats] = useState<{ memberCount: number; reportCount: number } | null>(null);
 
   const fetchOrgs = async () => {
@@ -161,25 +173,38 @@ export default function OrganizationPage() {
                        </div>
                     </div>
 
-                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                       <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
-                          <Users className="h-6 w-6" />
-                       </div>
-                       <div>
-                          <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Team Members</p>
-                          <p className="font-bold text-slate-700">{stats?.memberCount ?? '-'}</p>
-                       </div>
-                    </div>
+                    {user?.role === "admin" || user?.role === "super_admin" ? (
+                      <Link href="/admin/members" className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-orange-200 hover:bg-orange-50/50 transition-all cursor-pointer group/card">
+                        <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 group-hover/card:scale-110 transition-transform">
+                            <Users className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Team Members</p>
+                            <p className="font-bold text-slate-700">{stats?.memberCount ?? '-'}</p>
+                        </div>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
+                            <Users className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Team Members</p>
+                            <p className="font-bold text-slate-700">{stats?.memberCount ?? '-'}</p>
+                        </div>
+                      </div>
+                    )}
 
-                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                       <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                    <Link href="/admin/reports" className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/50 transition-all cursor-pointer group/card">
+                      <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover/card:scale-110 transition-transform">
                           <FileText className="h-6 w-6" />
-                       </div>
-                       <div>
+                      </div>
+                      <div>
                           <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Reports Generated</p>
                           <p className="font-bold text-slate-700">{stats?.reportCount ?? '-'}</p>
-                       </div>
-                    </div>
+                      </div>
+                    </Link>
+                    
 
                     <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                        <div className="h-12 w-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
@@ -272,7 +297,12 @@ export default function OrganizationPage() {
         )}
 
         {/* Create Dialog */}
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <Dialog open={showCreateDialog} onOpenChange={(open) => {
+          if (!open) {
+            if (newOrgName) setShowCancelCreate(true);
+            else setShowCreateDialog(false);
+          }
+        }}>
           <DialogContent className="rounded-[2.5rem] p-8">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black">Create New Organization</DialogTitle>
@@ -294,7 +324,10 @@ export default function OrganizationPage() {
               </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="ghost" onClick={() => setShowCreateDialog(false)} className="rounded-full h-12 px-8 font-semibold">Cancel</Button>
+              <Button variant="ghost" onClick={() => {
+                if (newOrgName) setShowCancelCreate(true);
+                else setShowCreateDialog(false);
+              }} className="rounded-full h-12 px-8 font-semibold">Cancel</Button>
               <Button 
                 onClick={handleCreateOrg} 
                 disabled={isCreating || !newOrgName} 
@@ -307,6 +340,29 @@ export default function OrganizationPage() {
           </DialogContent>
         </Dialog>
 
+        <AlertDialog open={showCancelCreate} onOpenChange={setShowCancelCreate}>
+          <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl font-bold">Discard organization?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have entered an organization name. If you cancel now, your input will be cleared.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel className="rounded-full">Continue Creating</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  setNewOrgName("");
+                  setShowCancelCreate(false);
+                  setShowCreateDialog(false);
+                }} 
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full px-6"
+              >
+                Discard & Close
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

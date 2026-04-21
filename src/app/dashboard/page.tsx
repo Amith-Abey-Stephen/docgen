@@ -134,7 +134,11 @@ export default function DashboardPage() {
               </div>
             ))
           ) : (
-            <div className="p-8 text-center text-muted-foreground">No recent activity found.</div>
+            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+              <ActivityIcon className="mb-4 h-12 w-12 opacity-10" />
+              <p className="text-sm font-medium">No recent activity found.</p>
+              <p className="text-xs opacity-60">Generate a report to see your activity here.</p>
+            </div>
           )}
         </div>
       </Card>

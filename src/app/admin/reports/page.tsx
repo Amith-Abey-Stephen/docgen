@@ -66,6 +66,16 @@ export default function AdminReportsPage() {
     }
   }, [selectedReport]);
 
+  const parsedContent = useMemo(() => {
+    if (!selectedReport) return null;
+    try {
+      return JSON.parse(selectedReport.content);
+    } catch {
+      // For old reports that stored plain text
+      return { report: selectedReport.content, feedback: "", outcome: [] };
+    }
+  }, [selectedReport]);
+
   const handleDelete = async () => {
     if (!reportToDelete) return;
     try {
@@ -83,18 +93,95 @@ export default function AdminReportsPage() {
     
     setDownloading(true);
     try {
-      const element = reportRef.current;
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const contentWidth = pageWidth - (margin * 2);
+
+      // 1. Capture Header, Signatures, and Branding Footer
+      const headerEl = document.getElementById("report-header");
+      const signaturesEl = document.getElementById("report-signatures");
+      const brandingFooterEl = document.getElementById("report-branding-footer");
       
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      const headerCanvas = headerEl ? await html2canvas(headerEl, { scale: 2, useCORS: true }) : null;
+      const signaturesCanvas = signaturesEl ? await html2canvas(signaturesEl, { scale: 2, useCORS: true }) : null;
+      const brandingFooterCanvas = brandingFooterEl ? await html2canvas(brandingFooterEl, { scale: 2, useCORS: true }) : null;
+
+      const headerImg = headerCanvas?.toDataURL("image/png");
+      const signaturesImg = signaturesCanvas?.toDataURL("image/png");
+      const brandingFooterImg = brandingFooterCanvas?.toDataURL("image/png");
+
+      const headerHeight = headerCanvas ? (headerCanvas.height * contentWidth) / headerCanvas.width : 0;
+      const signaturesHeight = signaturesCanvas ? (signaturesCanvas.height * contentWidth) / signaturesCanvas.width : 0;
+      const brandingFooterHeight = brandingFooterCanvas ? (brandingFooterCanvas.height * contentWidth) / brandingFooterCanvas.width : 0;
+
+      // 2. Capture all rows
+      const rows = Array.from(document.querySelectorAll("#report-body tr")) as HTMLTableRowElement[];
+      const rowCanvases = await Promise.all(rows.map(row => html2canvas(row, { scale: 2, useCORS: true })));
+
+      let currentY = margin;
+      let firstPage = true;
+
+      const addNewPage = () => {
+        // Before adding a new page, add the branding footer to the current one
+        if (!firstPage && brandingFooterImg) {
+          pdf.addImage(brandingFooterImg, "PNG", margin, pageHeight - brandingFooterHeight - margin, contentWidth, brandingFooterHeight);
+        }
+
+        if (!firstPage) pdf.addPage();
+        firstPage = false;
+        currentY = margin;
+        
+        // Add header to each page
+        if (headerImg) {
+          pdf.addImage(headerImg, "PNG", margin, currentY, contentWidth, headerHeight);
+          currentY += headerHeight + 5;
+        }
+      };
+
+      const addSignatures = () => {
+        if (signaturesImg) {
+          pdf.addImage(signaturesImg, "PNG", margin, currentY, contentWidth, signaturesHeight);
+          currentY += signaturesHeight + 5;
+        }
+      };
+
+      const addBrandingFooter = () => {
+        if (brandingFooterImg) {
+          pdf.addImage(brandingFooterImg, "PNG", margin, pageHeight - brandingFooterHeight - margin, contentWidth, brandingFooterHeight);
+        }
+      };
+
+      addNewPage();
+
+      for (let i = 0; i < rowCanvases.length; i++) {
+        const rowCanvas = rowCanvases[i];
+        const rowHeight = (rowCanvas.height * contentWidth) / rowCanvas.width;
+
+        // Check if row fits on current page (leaving space for branding footer)
+        if (currentY + rowHeight + brandingFooterHeight + margin > pageHeight) {
+          addNewPage();
+        }
+
+        const rowImg = rowCanvas.toDataURL("image/png");
+        pdf.addImage(rowImg, "PNG", margin, currentY, contentWidth, rowHeight);
+        currentY += rowHeight;
+      }
+
+      // Check if signatures + branding footer fit on the last page
+      if (currentY + signaturesHeight + brandingFooterHeight + margin > pageHeight) {
+        addNewPage();
+      }
+      
+      addSignatures();
+      addBrandingFooter();
+      
       pdf.save(`Report_${selectedReport.title.replace(/\s+/g, "_")}.pdf`);
-      toast({ title: "Success", description: "Report downloaded successfully.", variant: "success" });
+      toast({ title: "Success", description: "Professional report generated with repeating headers.", variant: "success" });
     } catch (error) {
-      toast({ title: "Error", description: "Failed to generate PDF.", variant: "destructive" });
+      console.error("PDF Export Error:", error);
+      toast({ title: "Error", description: "Failed to generate multi-page PDF.", variant: "destructive" });
     } finally {
       setDownloading(false);
     }
@@ -257,9 +344,7 @@ export default function AdminReportsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 sm:gap-3">
-                  <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden sm:flex border-2 font-bold h-10 rounded-full hover:bg-slate-50 transition-colors">
-                    <Printer className="mr-2 h-4 w-4" /> Print
-                  </Button>
+
                   <Button size="sm" onClick={downloadPDF} disabled={downloading} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 font-bold h-10 rounded-full px-4 sm:px-6 transition-transform active:scale-95">
                     {downloading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -283,104 +368,135 @@ export default function AdminReportsPage() {
               <div className="flex-1 p-0 sm:p-6 md:p-12 bg-slate-200/50">
                 <div 
                   ref={reportRef} 
-                  className="mx-auto w-full max-w-[794px] min-h-screen md:min-h-[1123px] bg-white p-6 sm:p-12 md:p-[80px] md:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] relative text-black sm:rounded-sm md:border md:border-slate-300 transform-gpu"
+                  className="mx-auto w-full max-w-[794px] min-h-[screen] md:min-h-[1123px] bg-white p-6 sm:p-12 md:p-[80px] md:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] relative text-black sm:rounded-sm md:border md:border-slate-300 transform-gpu"
                 >
-                  <div className="mb-6 sm:mb-8 text-center relative px-2">
-                    {organization?.headerImage ? (
-                      <div className="w-full h-auto overflow-hidden rounded-xl">
-                        <img 
-                          src={organization.headerImage} 
-                          className="w-full h-auto object-contain max-h-[160px]" 
-                          alt="Custom Organization Header" 
-                        />
+                  <div className="border-2 border-slate-950 p-4 min-h-full flex flex-col" id="report-content">
+                    <div className="mb-6 sm:mb-8 text-center relative px-2" id="report-header">
+                      {organization?.headerImage ? (
+                        <div className="w-full h-auto overflow-hidden rounded-xl">
+                          <img 
+                            src={organization.headerImage} 
+                            className="w-full h-auto object-contain max-h-[160px]" 
+                            alt="Custom Organization Header" 
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="hidden lg:block absolute top-0 right-0 text-[10px] font-mono text-slate-300 opacity-50">#REPORT-{String(selectedReport.id).slice(-6).toUpperCase()}</div>
+                          <img src="/favicon.png" className="mx-auto mb-3 h-14 w-14 sm:h-20 sm:w-20 object-contain" alt="College logo" />
+                          <h1 className="text-base sm:text-2xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
+                            {organization?.headerTitle || "YOUR COLLEGE NAME"}
+                          </h1>
+                          <p className="text-[9px] sm:text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">
+                            {organization?.headerSubtitle || "Department of Computer Science"}
+                          </p>
+                          <div className="mt-3 h-1 w-12 sm:w-24 bg-primary/20 mx-auto rounded-full" />
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex-1" id="report-body">
+                      <table className="w-full border-collapse border border-slate-300 text-sm mb-8">
+                        <tbody>
+                          <tr>
+                            <td className="w-1/3 border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Title of Activity</td>
+                            <td className="border border-slate-300 p-3 font-medium">{selectedReport.title}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Date</td>
+                            <td className="border border-slate-300 p-3 font-medium">{parsedDetails.date || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Department/Club/Cell</td>
+                            <td className="border border-slate-300 p-3 font-medium">{parsedDetails.department || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Student Participants</td>
+                            <td className="border border-slate-300 p-3 font-medium">{parsedDetails.students || "0"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Faculty Participants</td>
+                            <td className="border border-slate-300 p-3 font-medium">{parsedDetails.faculties || "0"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Faculty Coordinator</td>
+                            <td className="border border-slate-300 p-3 font-medium">{parsedDetails.coordinator || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Report</td>
+                            <td className="border border-slate-300 p-3 whitespace-pre-wrap text-justify leading-relaxed">
+                              {selectedReport.content}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Feedback Analysis</td>
+                            <td className="border border-slate-300 p-3 whitespace-pre-wrap">
+                              {parsedDetails.feedback || "-"}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50 text-slate-900 uppercase tracking-tight">Programme Outcome</td>
+                            <td className="border border-slate-300 p-3 whitespace-pre-wrap">
+                              {Array.isArray(parsedDetails.outcome) ? (
+                                <ul className="list-none p-0 m-0 space-y-1">
+                                  {parsedDetails.outcome.map((item: string, idx: number) => item && (
+                                    <li key={idx} className="flex gap-2 text-slate-700">
+                                      <span className="shrink-0 text-slate-950 font-black">•</span>
+                                      <span className="leading-tight">{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                parsedDetails.outcome || "-"
+                              )}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="mt-20" id="report-signatures">
+                      <div className="flex justify-between text-xs font-bold mb-16 px-4">
+                        <div className="text-center w-64 group">
+                          <div data-html2canvas-ignore="true" className="h-20 mb-2 border-2 border-dashed border-transparent group-hover:border-slate-100 rounded-xl flex items-center justify-center text-[10px] text-slate-200 italic font-normal">
+                            (Physical Signature / Seal Area)
+                          </div>
+                          <div className="border-t-2 border-slate-900 pt-3 uppercase tracking-widest text-slate-900">
+                            {organization?.signatureLeftLabel || "Event Coordinator"}
+                          </div>
+                          <div className="mt-2 text-[9px] text-slate-400 font-mono">DATE: {new Date(selectedReport.createdAt).toLocaleDateString()}</div>
+                        </div>
+                        <div className="text-center w-64 group">
+                          <div data-html2canvas-ignore="true" className="h-20 mb-2 border-2 border-dashed border-transparent group-hover:border-slate-100 rounded-xl flex items-center justify-center text-[10px] text-slate-200 italic font-normal">
+                            (Physical Signature / Seal Area)
+                          </div>
+                          <div className="border-t-2 border-slate-900 pt-3 uppercase tracking-widest text-slate-900">
+                            {organization?.signatureRightLabel || "Head of Department"}
+                          </div>
+                          {organization?.signatureRightName && (
+                            <div className="mt-2 text-[11px] font-black text-slate-950 uppercase tracking-tight">
+                              {organization.signatureRightName}
+                            </div>
+                          )}
+                          <div className="mt-2 text-[9px] text-slate-400 font-mono uppercase">STAMP SECURED</div>
+                        </div>
                       </div>
-                    ) : (
-                      <>
-                        <div className="hidden lg:block absolute top-0 right-0 text-[10px] font-mono text-slate-300 opacity-50">#REPORT-{String(selectedReport.id).slice(-6).toUpperCase()}</div>
-                        <img src="/favicon.png" className="mx-auto mb-3 h-14 w-14 sm:h-20 sm:w-20 object-contain" alt="College logo" />
-                        <h1 className="text-base sm:text-2xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
-                          {organization?.headerTitle || "YOUR COLLEGE NAME"}
-                        </h1>
-                        <p className="text-[9px] sm:text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          {organization?.headerSubtitle || "Department of Computer Science"}
+                    </div>
+
+                    <div id="report-branding-footer">
+                      {organization?.footerImage ? (
+                        <div className="flex justify-center pt-8 opacity-90 grayscale hover:grayscale-0 transition-all duration-300">
+                          <img 
+                            src={organization.footerImage} 
+                            className="max-h-[100px] object-contain" 
+                            alt="Custom Footer Branding" 
+                          />
+                        </div>
+                      ) : (
+                         <p className="text-center text-[9px] sm:text-xs font-serif italic text-slate-400">
+                          &quot;{organization?.footerText || "Official Record of Institution"}&quot;
                         </p>
-                        <div className="mt-3 h-1 w-12 sm:w-24 bg-primary/20 mx-auto rounded-full" />
-                      </>
-                    )}
-                  </div>
-
-                  <hr className="mb-5 sm:mb-8 border-slate-200" />
-                  <h2 className="mb-6 sm:mb-10 text-center text-base sm:text-2xl font-extrabold underline underline-offset-4 sm:underline-offset-8 decoration-primary/30 uppercase tracking-tight text-slate-900 leading-snug px-2">{selectedReport.title}</h2>
-                  
-                  <div className="space-y-5 sm:space-y-8 text-xs sm:text-[15px] leading-relaxed text-slate-800 px-2 sm:px-0">
-                    <p className="text-justify font-serif italic text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 text-[11px] sm:text-sm leading-normal">
-                      &quot;{organization?.footerText || "This document serves as an official administrative record detailing the proceedings and outcomes of the event conducted by the institution."}&quot;
-                    </p>
-
-                    <div className="space-y-3 sm:space-y-4">
-                      <h3 className="text-sm sm:text-lg font-black text-slate-900 border-l-4 border-primary pl-3 py-0.5">Contextual Background</h3>
-                      <p className="text-justify whitespace-pre-wrap leading-relaxed sm:leading-loose tracking-tight">{selectedReport.content}</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 my-6 sm:my-10">
-                      <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 space-y-3 sm:space-y-4">
-                        <h4 className="text-[10px] sm:text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary" /> Event Metadata
-                        </h4>
-                        <ul className="space-y-2 sm:space-y-3 text-[11px] sm:text-sm">
-                          <li className="flex justify-between border-b border-slate-200 pb-1.5"><span className="text-slate-500">Date</span> <span className="font-bold">{parsedDetails.date || "-"}</span></li>
-                          <li className="flex justify-between border-b border-slate-200 pb-1.5"><span className="text-slate-500">Department</span> <span className="font-bold truncate max-w-[150px]">{parsedDetails.department || "-"}</span></li>
-                          <li className="flex justify-between border-b border-slate-200 pb-1.5"><span className="text-slate-500">Mode</span> <span className="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-slate-200 rounded-full">{parsedDetails.mode || "-"}</span></li>
-                        </ul>
-                      </div>
-                      <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 space-y-3 sm:space-y-4">
-                        <h4 className="text-[10px] sm:text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary" /> Participation Metrics
-                        </h4>
-                        <ul className="space-y-2 sm:space-y-3 text-[11px] sm:text-sm">
-                          <li className="flex justify-between border-b border-slate-200 pb-1.5"><span className="text-slate-500">Students</span> <span className="font-bold text-primary">{parsedDetails.students || "0"}</span></li>
-                          <li className="flex justify-between border-b border-slate-200 pb-1.5"><span className="text-slate-500">Faculties</span> <span className="font-bold text-primary">{parsedDetails.faculties || "0"}</span></li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 sm:space-y-4 pt-1 shrink-0">
-                      <h3 className="text-sm sm:text-lg font-black text-slate-900 border-l-4 border-primary pl-3 py-0.5">Feedback Summary</h3>
-                      <div className="bg-slate-50/50 p-3 sm:p-4 rounded-xl text-slate-700 italic border border-slate-100 text-[11px] sm:text-sm">
-                        {parsedDetails.feedback || "No feedback recorded."}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 sm:space-y-4 pt-1 shrink-0">
-                      <h3 className="text-sm sm:text-lg font-black text-slate-900 border-l-4 border-primary pl-3 py-0.5">Outcomes & Achievements</h3>
-                      <div className="bg-slate-50/50 p-3 sm:p-4 rounded-xl text-slate-700 font-medium border border-slate-100 text-[11px] sm:text-sm">
-                        {parsedDetails.outcome || "No outcomes recorded."}
-                      </div>
-                    </div>
-
-                    {organization?.footerImage && (
-                      <div className="mt-8 flex justify-center border-t border-slate-100 pt-8 opacity-90 grayscale hover:grayscale-0 transition-all duration-300">
-                        <img 
-                          src={organization.footerImage} 
-                          className="max-h-[100px] object-contain" 
-                          alt="Custom Footer Branding" 
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-12 sm:mt-32 flex flex-col sm:flex-row justify-between gap-10 sm:gap-12 text-[10px] sm:text-xs font-bold pt-10 sm:pt-12 border-t-2 border-slate-100">
-                    <div className="text-center group">
-                      <div className="mb-3 text-slate-300 opacity-50 text-[9px] group-hover:opacity-100 transition-opacity">Digital Signature Placeholder</div>
-                      <div className="mb-2 h-0.5 w-full sm:w-40 bg-slate-950 mx-auto" />
-                      <div className="uppercase tracking-widest text-slate-400 font-black mb-0.5">Event Coordinator</div>
-                      <div className="text-[9px] text-slate-300 font-mono">Date: {new Date().toLocaleDateString()}</div>
-                    </div>
-                    <div className="text-center group">
-                      <div className="mb-3 text-slate-300 opacity-50 text-[9px] group-hover:opacity-100 transition-opacity whitespace-nowrap">HOD Signature Verified</div>
-                      <div className="mb-2 h-0.5 w-full sm:w-40 bg-slate-950 mx-auto" />
-                      <div className="uppercase tracking-widest text-slate-400 font-black mb-0.5">Head of Department</div>
-                      <div className="text-[9px] text-slate-300 font-mono uppercase">STAMP SECURED</div>
+                      )}
                     </div>
                   </div>
                 </div>

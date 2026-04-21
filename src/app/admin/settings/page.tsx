@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Save, Loader2, Building2, Layout, FileText, BadgeCheck, Upload, Trash2, Image as ImageIcon } from "lucide-react";
+import { Save, Loader2, Building2, Layout, FileText, BadgeCheck, Upload, Trash2, Image as ImageIcon, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +11,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useAdminOrganization, useUpdateAdminOrganization } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminSettingsPage() {
   const [mounted, setMounted] = useState(false);
@@ -24,6 +35,15 @@ export default function AdminSettingsPage() {
   
   const headerFileRef = useRef<HTMLInputElement>(null);
   const footerFileRef = useRef<HTMLInputElement>(null);
+  
+  const router = useRouter();
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  
+  const [headerFile, setHeaderFile] = useState<File | null>(null);
+  const [footerFile, setFooterFile] = useState<File | null>(null);
+  const [headerPreview, setHeaderPreview] = useState<string | null>(null);
+  const [footerPreview, setFooterPreview] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -31,7 +51,11 @@ export default function AdminSettingsPage() {
     headerSubtitle: "",
     footerText: "",
     description: "",
+    signatureLeftLabel: "",
+    signatureRightLabel: "",
+    signatureRightName: "",
   });
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -45,17 +69,90 @@ export default function AdminSettingsPage() {
         headerSubtitle: organization.headerSubtitle || "",
         footerText: organization.footerText || "",
         description: organization.description || "",
+        signatureLeftLabel: organization.signatureLeftLabel || "Event Coordinator",
+        signatureRightLabel: organization.signatureRightLabel || "Head of Department",
+        signatureRightName: organization.signatureRightName || "",
       });
+      setIsDirty(false);
+      setHeaderPreview(null);
+      setFooterPreview(null);
+      setHeaderFile(null);
+      setFooterFile(null);
     }
   }, [organization]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    const handleInternalNavigation = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest("a");
+      if (link && isDirty) {
+        const href = link.getAttribute("href");
+        if (href && !href.startsWith("#") && !href.startsWith("javascript:")) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingUrl(href);
+          setShowLeaveDialog(true);
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleInternalNavigation, true);
+    
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleInternalNavigation, true);
+    };
+  }, [isDirty]);
+
+  const updateField = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setUploadingHeader(headerFile !== null);
+    setUploadingFooter(footerFile !== null);
+    
     try {
+      // 1. Upload files if present
+      if (headerFile) {
+        const formData = new FormData();
+        formData.append("file", headerFile);
+        formData.append("type", "header");
+        await fetch("/api/admin/organization/upload", { method: "POST", body: formData });
+      }
+      
+      if (footerFile) {
+        const formData = new FormData();
+        formData.append("file", footerFile);
+        formData.append("type", "footer");
+        await fetch("/api/admin/organization/upload", { method: "POST", body: formData });
+      }
+
+      // 2. Save other settings
       await updateOrg.mutateAsync(form);
+      setIsDirty(false);
+      setHeaderFile(null);
+      setFooterFile(null);
+      setHeaderPreview(null);
+      setFooterPreview(null);
+      
       toast({ title: "Settings updated", description: "Organization branding and details have been saved.", variant: "success" });
+      refetch();
     } catch (error) {
       toast({ title: "Update failed", description: "Failed to save organization settings.", variant: "destructive" });
+    } finally {
+      setUploadingHeader(false);
+      setUploadingFooter(false);
     }
   };
 
@@ -63,28 +160,15 @@ export default function AdminSettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isHeader = type === "header";
-    isHeader ? setUploadingHeader(true) : setUploadingFooter(true);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", type);
-
-    try {
-      const res = await fetch("/api/admin/organization/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Upload failed");
-      
-      toast({ title: "Upload successful", description: `${type} image has been updated.`, variant: "success" });
-      refetch();
-    } catch (error) {
-      toast({ title: "Upload failed", description: "Could not upload image to Cloudinary.", variant: "destructive" });
-    } finally {
-      isHeader ? setUploadingHeader(false) : setUploadingFooter(false);
+    const previewUrl = URL.createObjectURL(file);
+    if (type === "header") {
+      setHeaderFile(file);
+      setHeaderPreview(previewUrl);
+    } else {
+      setFooterFile(file);
+      setFooterPreview(previewUrl);
     }
+    setIsDirty(true);
   };
 
   const removeImage = async (type: "header" | "footer") => {
@@ -117,10 +201,33 @@ export default function AdminSettingsPage() {
 
   return (
     <DashboardLayout mode="admin">
-      <div className="max-w-5xl mx-auto pb-20">
-        <div className="mb-10">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Organization Settings</h1>
-          <p className="text-slate-500 mt-2 text-lg">Customize your organization&apos;s identity and Cloudinary-powered branding.</p>
+      <div className="max-w-5xl mx-auto pb-20 relative">
+        <div className="sticky top-0 z-30 mb-8 -mx-4 px-4 py-4 bg-background/80 backdrop-blur-md border-b flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Organization Settings</h1>
+            {isDirty && (
+              <p className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-1">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                You have unsaved changes
+              </p>
+            )}
+          </div>
+          <Button 
+            onClick={() => handleSubmit()}
+            disabled={!isDirty || updateOrg.isPending}
+            className={`h-12 px-6 rounded-full font-bold shadow-lg transition-all active:scale-95 flex gap-2 ${
+              isDirty ? "bg-primary hover:bg-primary/90 text-white" : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            {updateOrg.isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <Save className="h-5 w-5" />
+                Save Changes
+              </>
+            )}
+          </Button>
         </div>
 
         <div className="space-y-8">
@@ -141,7 +248,7 @@ export default function AdminSettingsPage() {
                     <Input 
                       id="name" 
                       value={form.name} 
-                      onChange={(e) => setForm({...form, name: e.target.value})}
+                      onChange={(e) => updateField("name", e.target.value)}
                       placeholder="e.g. Inovus Labs IEDC"
                       className="h-14 rounded-2xl border-slate-200 focus:ring-primary text-lg"
                       required
@@ -152,19 +259,10 @@ export default function AdminSettingsPage() {
                     <Textarea 
                       id="description" 
                       value={form.description} 
-                      onChange={(e) => setForm({...form, description: e.target.value})}
+                      onChange={(e) => updateField("description", e.target.value)}
                       placeholder="Briefly describe your organization..."
                       className="min-h-[120px] rounded-2xl border-slate-200 focus:ring-primary"
                     />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button 
-                      type="submit" 
-                      className="h-14 px-8 rounded-full bg-slate-900 hover:bg-slate-800 font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
-                      disabled={updateOrg.isPending}
-                    >
-                      {updateOrg.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save General Settings"}
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -197,7 +295,7 @@ export default function AdminSettingsPage() {
                       <Label className="text-slate-700 font-bold">Header Title</Label>
                       <Input 
                         value={form.headerTitle} 
-                        onChange={(e) => setForm({...form, headerTitle: e.target.value})}
+                        onChange={(e) => updateField("headerTitle", e.target.value)}
                         className="rounded-xl border-slate-200"
                         placeholder="e.g. COLLEGE OF ENG"
                       />
@@ -206,7 +304,7 @@ export default function AdminSettingsPage() {
                       <Label className="text-slate-700 font-bold">Header Subtitle</Label>
                       <Input 
                         value={form.headerSubtitle} 
-                        onChange={(e) => setForm({...form, headerSubtitle: e.target.value})}
+                        onChange={(e) => updateField("headerSubtitle", e.target.value)}
                         className="rounded-xl border-slate-200"
                         placeholder="e.g. Dept. of CSE"
                       />
@@ -216,14 +314,25 @@ export default function AdminSettingsPage() {
                   <div className="space-y-4 pt-4">
                     <Label className="text-slate-700 font-bold block">Institution Letterhead Image</Label>
                     <div className="relative group">
-                      {organization?.headerImage ? (
+                      {(headerPreview || organization?.headerImage) ? (
                         <div className="relative border-2 border-slate-100 rounded-2xl overflow-hidden h-40 bg-slate-50 flex items-center justify-center">
-                          <img src={organization.headerImage} alt="Header Preview" className="h-full w-full object-contain" />
+                          <img src={headerPreview || organization?.headerImage} alt="Header Preview" className="h-full w-full object-contain" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                             <Button size="icon" variant="destructive" className="rounded-full shadow-xl" onClick={() => removeImage("header")}>
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
+                             {headerPreview ? (
+                               <Button size="icon" variant="secondary" className="rounded-full shadow-xl" onClick={() => { setHeaderFile(null); setHeaderPreview(null); }}>
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             ) : (
+                               <Button size="icon" variant="destructive" className="rounded-full shadow-xl" onClick={() => removeImage("header")}>
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             )}
                           </div>
+                          {headerPreview && (
+                            <div className="absolute top-2 right-2 bg-amber-500 text-white text-[10px] px-2 py-1 rounded-full font-bold animate-pulse">
+                              Pending Save
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div 
@@ -259,7 +368,7 @@ export default function AdminSettingsPage() {
                     <Label className="text-slate-700 font-bold">Footer Audit / Bottom Text</Label>
                     <Input 
                       value={form.footerText} 
-                      onChange={(e) => setForm({...form, footerText: e.target.value})}
+                      onChange={(e) => updateField("footerText", e.target.value)}
                       className="rounded-xl border-slate-200"
                       placeholder="e.g. Verified by Accreditation Board"
                     />
@@ -268,14 +377,25 @@ export default function AdminSettingsPage() {
                   <div className="space-y-4 pt-4">
                     <Label className="text-slate-700 font-bold block">Official Seal / QR / Stamp</Label>
                     <div className="relative group">
-                      {organization?.footerImage ? (
+                      {(footerPreview || organization?.footerImage) ? (
                         <div className="relative border-2 border-slate-100 rounded-2xl overflow-hidden h-32 bg-slate-50 flex items-center justify-center">
-                          <img src={organization.footerImage} alt="Footer Preview" className="h-full w-full object-contain" />
+                          <img src={footerPreview || organization?.footerImage} alt="Footer Preview" className="h-full w-full object-contain" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                             <Button size="icon" variant="destructive" className="rounded-full shadow-xl" onClick={() => removeImage("footer")}>
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
+                             {footerPreview ? (
+                               <Button size="icon" variant="secondary" className="rounded-full shadow-xl" onClick={() => { setFooterFile(null); setFooterPreview(null); }}>
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             ) : (
+                               <Button size="icon" variant="destructive" className="rounded-full shadow-xl" onClick={() => removeImage("footer")}>
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             )}
                           </div>
+                          {footerPreview && (
+                            <div className="absolute top-2 right-2 bg-amber-500 text-white text-[10px] px-2 py-1 rounded-full font-bold animate-pulse">
+                              Pending Save
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div 
@@ -297,6 +417,46 @@ export default function AdminSettingsPage() {
                   </div>
                 </CardContent>
               </Card>
+            <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white/50 backdrop-blur-sm">
+                <CardHeader className="bg-slate-50 border-b border-slate-100 p-8">
+                  <CardTitle className="text-slate-900 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-slate-400" />
+                    Signature Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-slate-700 font-bold">Left Signature Label</Label>
+                      <Input 
+                        value={form.signatureLeftLabel} 
+                        onChange={(e) => updateField("signatureLeftLabel", e.target.value)}
+                        className="rounded-xl border-slate-200"
+                        placeholder="e.g. Name & Signature of Co-ordinator"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-700 font-bold">Right Signature Label</Label>
+                      <Input 
+                        value={form.signatureRightLabel} 
+                        onChange={(e) => updateField("signatureRightLabel", e.target.value)}
+                        className="rounded-xl border-slate-200"
+                        placeholder="e.g. Principal"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-700 font-bold">Right Signature Name (Optional)</Label>
+                    <Input 
+                      value={form.signatureRightName} 
+                      onChange={(e) => updateField("signatureRightName", e.target.value)}
+                      className="rounded-xl border-slate-200"
+                      placeholder="e.g. Fr. Dr. Joshy George"
+                    />
+                    <p className="text-[10px] text-muted-foreground italic">If provided, this will appear below the right signature label.</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
@@ -315,6 +475,45 @@ export default function AdminSettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+          <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-2xl font-black text-slate-900">
+                <AlertTriangle className="h-6 w-6 text-amber-500" />
+                Unsaved Changes
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-500 text-base py-2">
+                You have made changes to your organization settings that haven&apos;t been saved yet. 
+                If you leave now, these changes will be lost forever.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+              <AlertDialogAction 
+                onClick={() => {
+                  setIsDirty(false);
+                  if (pendingUrl) router.push(pendingUrl);
+                }}
+                className="rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold h-12 px-6 border-none"
+              >
+                Discard & Exit
+              </AlertDialogAction>
+              
+
+
+              <Button 
+                onClick={async () => {
+                  await handleSubmit();
+                  if (pendingUrl) router.push(pendingUrl);
+                }}
+                className="rounded-full bg-primary hover:bg-primary/90 text-white font-bold h-12 px-8 shadow-lg flex gap-2"
+              >
+                <Save className="h-4 w-4" />
+                Save & Exit
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
