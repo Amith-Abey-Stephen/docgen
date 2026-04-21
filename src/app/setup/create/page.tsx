@@ -41,8 +41,23 @@ export default function CreateOrganizationSetupPage() {
       
       // Redirect to dashboard now that they have an org
       router.push("/dashboard");
-    } catch (error) {
-      toast({ title: "Setup Failed", description: "Could not create organization. Please try again.", variant: "destructive" });
+    } catch (error: any) {
+      let errorMessage = "Could not create organization. Please try again.";
+      
+      try {
+        if (error instanceof Error) {
+          const parsed = JSON.parse(error.message);
+          errorMessage = parsed.message || errorMessage;
+        }
+      } catch (e) {
+        errorMessage = error.message || errorMessage;
+      }
+
+      toast({ 
+        title: "Setup Failed", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
     } finally {
       setIsCreating(false);
     }
