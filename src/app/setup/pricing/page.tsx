@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { Check, Zap, Shield, Rocket, ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 const plans = [
   {
     name: "Starter",
-    price: "0",
+    price: 0,
     description: "Perfect for small teams or trial projects.",
     features: ["Up to 10 Reports/mo", "Basic Templates", "1 Admin Seat", "Email Support"],
     icon: Zap,
@@ -20,7 +22,7 @@ const plans = [
   },
   {
     name: "Professional",
-    price: "499",
+    price: 499,
     description: "The most popular choice for growing organizations.",
     features: ["Unlimited Reports", "Custom Branding", "5 Admin Seats", "Priority Support", "Advanced Analytics"],
     icon: Rocket,
@@ -29,7 +31,7 @@ const plans = [
   },
   {
     name: "Enterprise",
-    price: "Custom",
+    price: 9999, // Custom logic handled in handleSelect
     description: "Tailored solutions for large institutions.",
     features: ["Everything in Pro", "Bulk User Imports", "Custom Templates", "Dedicated Account Manager", "SSO Integration"],
     icon: Shield,
@@ -40,23 +42,97 @@ const plans = [
 export default function PricingPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { toast } = useToast();
   const [selecting, setSelecting] = useState<string | null>(null);
 
-  const handleSelect = (planName: string) => {
-    setSelecting(planName);
+  const handleSelect = async (plan: typeof plans[0]) => {
+    if (!user) return;
+    
+    setSelecting(plan.name);
     if (typeof window !== "undefined") {
-      sessionStorage.setItem("pendingPlan", planName.toLowerCase());
+      sessionStorage.setItem("pendingPlan", plan.name.toLowerCase());
     }
-    // Simulate a brief "payment processing" delay
-    setTimeout(() => {
+
+    // Skip payment for free plan
+    if (plan.price === 0) {
       router.push("/setup/create");
-    }, 1200);
+      return;
+    }
+
+    try {
+      // 1. Create Order
+      const orderRes = await fetch("/api/payments/razorpay/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          amount: plan.price, 
+          planName: plan.name 
+        }),
+      });
+
+      if (!orderRes.ok) throw new Error("Could not create payment order");
+      const order = await orderRes.json();
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: order.key,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Mr DocGen",
+        description: `Subscription: ${plan.name} Plan`,
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            // 3. Verify Payment
+            const verifyRes = await fetch("/api/payments/razorpay/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...response,
+                planName: plan.name
+              }),
+            });
+
+            if (!verifyRes.ok) throw new Error("Payment verification failed");
+
+            toast({ title: "Payment Successful", description: "Your workspace is ready for setup." });
+            router.push("/setup/create");
+          } catch (err: any) {
+            toast({ title: "Verification Failed", description: err.message, variant: "destructive" });
+            setSelecting(null);
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: "#0f172a", // Match your app's slate-900
+        },
+        modal: {
+          ondismiss: function() {
+            setSelecting(null);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (error: any) {
+      toast({ 
+        title: "Payment Initialization Failed", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+      setSelecting(null);
+    }
   };
 
   if (isLoading) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-20 px-4">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -114,7 +190,7 @@ export default function PricingPage() {
 
               <CardFooter className="p-10 pt-0">
                 <Button 
-                  onClick={() => handleSelect(plan.name)}
+                  onClick={() => handleSelect(plan)}
                   disabled={selecting !== null}
                   className={`w-full h-14 rounded-full font-bold text-lg shadow-lg shadow-slate-200 transition-all active:scale-95 ${plan.popular ? 'bg-primary' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}
                 >
@@ -122,7 +198,7 @@ export default function PricingPage() {
                     <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
                     <>
-                      {plan.price === "0" ? "Start for Free" : "Select Plan"}
+                      {plan.price === 0 ? "Start for Free" : "Select Plan"}
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </>
                   )}
