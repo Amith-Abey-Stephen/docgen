@@ -23,7 +23,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useRequireAuth } from "@/hooks/use-auth";
-import { useCreateReport, usePreviewReport } from "@/hooks/use-reports";
+import { useCreateReport, usePreviewReport, useUpdateReport } from "@/hooks/use-reports";
+import { useAdminOrganization } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
 
 const formVariants = {
@@ -44,7 +45,9 @@ export default function CreateReportPage() {
   const [mounted, setMounted] = useState(false);
   const { user, isLoading: authLoading } = useRequireAuth();
   const createReport = useCreateReport();
+  const updateReport = useUpdateReport();
   const previewReport = usePreviewReport();
+  const { data: organization } = useAdminOrganization();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -52,7 +55,8 @@ export default function CreateReportPage() {
   const [generated, setGenerated] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [output, setOutput] = useState("");
+  const [aiResponse, setAiResponse] = useState<{ report: string; feedback: string; outcome: string } | null>(null);
+  const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   
   const reportRef = useRef<HTMLDivElement>(null);
@@ -75,11 +79,24 @@ export default function CreateReportPage() {
 
     setSaving(true);
     try {
-      await createReport.mutateAsync({
-        userId: user.id,
-        title: form.title || "Untitled report",
-        details: JSON.stringify(form, null, 2),
-      });
+      if (lastSavedId) {
+        // Update existing report
+        await updateReport.mutateAsync({
+          id: lastSavedId,
+          data: {
+            title: form.title || "Untitled report",
+            details: JSON.stringify(form, null, 2),
+          }
+        });
+      } else {
+        // Create new report
+        const result = await createReport.mutateAsync({
+          userId: user.id,
+          title: form.title || "Untitled report",
+          details: JSON.stringify(form, null, 2),
+        });
+        setLastSavedId(result.id);
+      }
       setIsSaved(true);
       if (!silent) {
         toast({ 
@@ -104,44 +121,102 @@ export default function CreateReportPage() {
   const downloadPDF = async () => {
     if (!reportRef.current) return;
     
-    // Automatically save if not already saved
     if (!isSaved) {
       await handleSave(true);
     }
     
     setDownloading(true);
     try {
-      const element = reportRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const contentWidth = pageWidth - (margin * 2);
+
+      // 1. Capture Header, Signatures, and Branding Footer
+      const headerEl = document.getElementById("report-header");
+      const signaturesEl = document.getElementById("report-signatures");
+      const brandingFooterEl = document.getElementById("report-branding-footer");
       
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+      const headerCanvas = headerEl ? await html2canvas(headerEl, { scale: 2, useCORS: true }) : null;
+      const signaturesCanvas = signaturesEl ? await html2canvas(signaturesEl, { scale: 2, useCORS: true }) : null;
+      const brandingFooterCanvas = brandingFooterEl ? await html2canvas(brandingFooterEl, { scale: 2, useCORS: true }) : null;
+
+      const headerImg = headerCanvas?.toDataURL("image/png");
+      const signaturesImg = signaturesCanvas?.toDataURL("image/png");
+      const brandingFooterImg = brandingFooterCanvas?.toDataURL("image/png");
+
+      const headerHeight = headerCanvas ? (headerCanvas.height * contentWidth) / headerCanvas.width : 0;
+      const signaturesHeight = signaturesCanvas ? (signaturesCanvas.height * contentWidth) / signaturesCanvas.width : 0;
+      const brandingFooterHeight = brandingFooterCanvas ? (brandingFooterCanvas.height * contentWidth) / brandingFooterCanvas.width : 0;
+
+      // 2. Capture all rows
+      const rows = Array.from(document.querySelectorAll("#report-body tr")) as HTMLTableRowElement[];
+      const rowCanvases = await Promise.all(rows.map(row => html2canvas(row, { scale: 2, useCORS: true })));
+
+      let currentY = margin;
+      let firstPage = true;
+
+      const addNewPage = () => {
+        // Before adding a new page, add the branding footer to the current one
+        if (!firstPage && brandingFooterImg) {
+          pdf.addImage(brandingFooterImg, "PNG", margin, pageHeight - brandingFooterHeight - margin, contentWidth, brandingFooterHeight);
+        }
+
+        if (!firstPage) pdf.addPage();
+        firstPage = false;
+        currentY = margin;
+        
+        // Add header to each page
+        if (headerImg) {
+          pdf.addImage(headerImg, "PNG", margin, currentY, contentWidth, headerHeight);
+          currentY += headerHeight + 5;
+        }
+      };
+
+      const addSignatures = () => {
+        if (signaturesImg) {
+          pdf.addImage(signaturesImg, "PNG", margin, currentY, contentWidth, signaturesHeight);
+          currentY += signaturesHeight + 5;
+        }
+      };
+
+      const addBrandingFooter = () => {
+        if (brandingFooterImg) {
+          pdf.addImage(brandingFooterImg, "PNG", margin, pageHeight - brandingFooterHeight - margin, contentWidth, brandingFooterHeight);
+        }
+      };
+
+      addNewPage();
+
+      for (let i = 0; i < rowCanvases.length; i++) {
+        const rowCanvas = rowCanvases[i];
+        const rowHeight = (rowCanvas.height * contentWidth) / rowCanvas.width;
+
+        // Check if row fits on current page (leaving space for branding footer)
+        if (currentY + rowHeight + brandingFooterHeight + margin > pageHeight) {
+          addNewPage();
+        }
+
+        const rowImg = rowCanvas.toDataURL("image/png");
+        pdf.addImage(rowImg, "PNG", margin, currentY, contentWidth, rowHeight);
+        currentY += rowHeight;
+      }
+
+      // Check if signatures + branding footer fit on the last page
+      if (currentY + signaturesHeight + brandingFooterHeight + margin > pageHeight) {
+        addNewPage();
+      }
       
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      addSignatures();
+      addBrandingFooter();
       
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
       pdf.save(`Report_${form.title?.replace(/\s+/g, "_") || "Document"}.pdf`);
       
-      toast({ 
-        title: "Download complete", 
-        description: "The report has been saved as a PDF.",
-        variant: "success",
-      });
+      toast({ title: "Download complete", description: "Professional report generated with repeating headers.", variant: "success" });
     } catch (error) {
-      toast({ 
-        title: "Download failed", 
-        description: "An error occurred while generating the PDF.", 
-        variant: "destructive" 
-      });
+      console.error("PDF Export Error:", error);
+      toast({ title: "Export failed", description: "There was an error generating the multi-page PDF.", variant: "destructive" });
     } finally {
       setDownloading(false);
     }
@@ -156,7 +231,7 @@ export default function CreateReportPage() {
     
     try {
       const response = await previewReport.mutateAsync(JSON.stringify(form, null, 2));
-      setOutput(response.content);
+      setAiResponse(response.content);
       setGenerated(true);
       
       // Scroll to preview somewhat smoothly after a short delay
@@ -220,7 +295,7 @@ export default function CreateReportPage() {
             >
               <Button 
                 variant="outline" 
-                onClick={() => { setGenerated(false); setForm({}); setOutput(""); setIsSaved(false); }}
+                onClick={() => { setGenerated(false); setForm({}); setAiResponse(null); setIsSaved(false); }}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" /> Start Over
               </Button>
@@ -280,8 +355,8 @@ export default function CreateReportPage() {
                       <Users className="h-4 w-4 text-primary" /> Participant Count <span className="text-destructive">*</span>
                     </Label>
                     <Input 
-                      id="students" name="students" type="number" value={form.students || ""} onChange={handleChange} required 
-                      placeholder="0"
+                      id="students" name="students" type="text" value={form.students || ""} onChange={handleChange} required 
+                      placeholder="e.g. 500+"
                     />
                   </div>
                   
@@ -290,8 +365,8 @@ export default function CreateReportPage() {
                       <Users className="h-4 w-4 text-primary" /> Faculty Count <span className="text-destructive">*</span>
                     </Label>
                     <Input 
-                      id="faculties" name="faculties" type="number" value={form.faculties || ""} onChange={handleChange} required 
-                      placeholder="0"
+                      id="faculties" name="faculties" type="text" value={form.faculties || ""} onChange={handleChange} required 
+                      placeholder="e.g. 10+"
                     />
                   </div>
 
@@ -308,6 +383,16 @@ export default function CreateReportPage() {
                       <option>Online</option>
                       <option>Hybrid</option>
                     </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="coordinator" className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-primary" /> Faculty Coordinator <span className="text-destructive">*</span>
+                    </Label>
+                    <Input 
+                      id="coordinator" name="coordinator" value={form.coordinator || ""} onChange={handleChange} required 
+                      placeholder="e.g. Roji Thomas"
+                    />
                   </div>
                 </motion.div>
 
@@ -406,10 +491,7 @@ export default function CreateReportPage() {
                   Report Preview
                 </h2>
                 <div className="flex flex-wrap justify-end gap-3 w-full md:w-auto">
-                  <Button onClick={() => window.print()} variant="outline" className="hidden md:flex">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print
-                  </Button>
+
                   <Button 
                     onClick={() => handleSave()} 
                     disabled={isSaved || saving} 
@@ -449,68 +531,115 @@ export default function CreateReportPage() {
                   ref={reportRef} 
                   className="w-full max-w-[794px] min-h-[1123px] bg-white p-8 md:p-[60px] shadow-lg relative text-black shrink-0 origin-top"
                 >
-                  <div className="mb-8 text-center">
-                    <img src="/favicon.png" className="mx-auto mb-4 h-20 md:h-24 object-contain" alt="College logo" />
-                    <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900">YOUR COLLEGE NAME</h1>
-                    <p className="text-base md:text-lg text-gray-600 mt-1">Department of {form.department}</p>
-                  </div>
+                  <div className="border-2 border-slate-950 p-4 min-h-full flex flex-col" id="report-content">
+                    <div className="mb-8 text-center" id="report-header">
+                      {organization?.headerImage ? (
+                        <img src={organization.headerImage} className="w-full h-auto object-contain max-h-[160px]" alt="Organization header" />
+                      ) : (
+                        <div className="py-4">
+                          <img src="/favicon.png" className="mx-auto mb-2 h-16 object-contain" alt="Default logo" />
+                          <h1 className="text-xl font-bold text-slate-900 uppercase tracking-tight">{organization?.name || "YOUR COLLEGE NAME"}</h1>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Department of {form.department || "..."}</p>
+                        </div>
+                      )}
+                    </div>
 
-                  <hr className="mb-8 border-t-2 border-gray-200" />
-                  <h2 className="mb-8 text-center text-xl md:text-2xl font-bold uppercase tracking-tight text-gray-800 leading-snug">{form.title}</h2>
-                  
-                  <div className="space-y-8 text-sm md:text-base text-gray-800">
-                    <p className="text-justify leading-relaxed text-lg">
-                      The {form.department} successfully organized an event titled <strong className="text-black font-bold">&quot;{form.title}&quot;</strong> on <strong className="text-black">{form.date}</strong> in <strong className="text-black">{form.mode}</strong> mode. The programme was designed to provide valuable insights and practical knowledge to the participants.
-                    </p>
+                    <div className="flex-1" id="report-body">
+                      <table className="w-full border-collapse border border-slate-300 text-sm mb-8">
+                        <tbody>
+                          <tr>
+                            <td className="w-1/3 border border-slate-300 p-3 font-bold bg-slate-50">Title of Activity</td>
+                            <td className="border border-slate-300 p-3">{form.title || "---"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Date</td>
+                            <td className="border border-slate-300 p-3">{form.date || "---"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Department/Club/Cell</td>
+                            <td className="border border-slate-300 p-3">{form.department || "---"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Total Student Participants</td>
+                            <td className="border border-slate-300 p-3">{form.students || "0"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Total Faculty Participants</td>
+                            <td className="border border-slate-300 p-3">{form.faculties || "0"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Faculty Coordinator</td>
+                            <td className="border border-slate-300 p-3">{form.coordinator || "---"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Report</td>
+                            <td className="border border-slate-300 p-3 whitespace-pre-wrap text-justify leading-relaxed">
+                              {aiResponse?.report || "Event details will appear here after generation..."}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Feedback Analysis</td>
+                            <td className="border border-slate-300 p-3 whitespace-pre-wrap">
+                              {aiResponse?.feedback || form.feedback || "---"}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="border border-slate-300 p-3 font-bold bg-slate-50">Programme Outcome</td>
+                            <td className="border border-slate-300 p-3 whitespace-pre-wrap">
+                              {Array.isArray(aiResponse?.outcome) ? (
+                                <ul className="list-none p-0 m-0 space-y-1">
+                                  {aiResponse.outcome.map((item, idx) => item && (
+                                    <li key={idx} className="flex gap-2">
+                                      <span className="shrink-0 text-slate-400 font-black">•</span>
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                aiResponse?.outcome || form.outcome || "---"
+                              )}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
 
-                    <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                      <h3 className="mb-4 font-bold text-gray-900 border-b-2 border-primary/20 w-max pb-1 uppercase tracking-wide text-sm">Event Summary</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Department</p>
-                          <p className="font-medium">{form.department}</p>
+                    <div className="mt-20" id="report-signatures">
+                      <div className="flex justify-between text-xs font-bold mb-16 px-4">
+                        <div className="text-center w-64 group">
+                          <div data-html2canvas-ignore="true" className="h-20 mb-2 border-2 border-dashed border-transparent group-hover:border-slate-100 rounded-xl flex items-center justify-center text-[10px] text-slate-200 italic font-normal">
+                            (Physical Signature / Seal Area)
+                          </div>
+                          <div className="border-t-2 border-slate-900 pt-3 uppercase tracking-widest text-slate-900">
+                            {organization?.signatureLeftLabel || "Event Coordinator"}
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Mode of Conduct</p>
-                          <p className="font-medium">{form.mode}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Participants</p>
-                          <p className="font-medium">{form.students} Students</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Faculties</p>
-                          <p className="font-medium">{form.faculties} Members</p>
+                        <div className="text-center w-64 group">
+                          <div data-html2canvas-ignore="true" className="h-20 mb-2 border-2 border-dashed border-transparent group-hover:border-slate-100 rounded-xl flex items-center justify-center text-[10px] text-slate-200 italic font-normal">
+                            (Physical Signature / Seal Area)
+                          </div>
+                          <div className="border-t-2 border-slate-900 pt-3 uppercase tracking-widest text-slate-900">
+                            {organization?.signatureRightLabel || "Head of Department"}
+                          </div>
+                          {organization?.signatureRightName && (
+                            <div className="mt-2 text-[11px] font-black text-slate-950 uppercase tracking-tight">
+                              {organization.signatureRightName}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="mb-3 font-bold text-gray-900 border-b border-gray-300 pb-2 text-lg">Detailed Report</h3>
-                      <p className="whitespace-pre-wrap text-justify leading-relaxed">{output}</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div>
-                        <h3 className="mb-3 font-bold text-gray-900 border-b border-gray-300 pb-2">Feedback Analysis</h3>
-                        <p className="leading-relaxed text-gray-700">{form.feedback}</p>
-                      </div>
-
-                      <div>
-                        <h3 className="mb-3 font-bold text-gray-900 border-b border-gray-300 pb-2">Programme Outcome</h3>
-                        <p className="leading-relaxed text-gray-700">{form.outcome}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-32 flex justify-between text-sm font-semibold pt-12 items-end">
-                    <div className="text-center w-48">
-                      <div className="border-b border-gray-400 mb-2"></div>
-                      <div className="text-gray-600 uppercase tracking-widest text-xs">Event Coordinator</div>
-                    </div>
-                    <div className="text-center w-48">
-                      <div className="border-b border-gray-400 mb-2"></div>
-                      <div className="text-gray-600 uppercase tracking-widest text-xs">Head of Department</div>
+                    <div id="report-branding-footer">
+                      {organization?.footerImage ? (
+                        <div className="pt-4 border-t border-slate-100">
+                          <img src={organization.footerImage} className="w-full h-auto object-contain max-h-[100px]" alt="Organization footer" />
+                        </div>
+                      ) : (
+                        <div className="pt-4 border-t border-slate-100 text-center">
+                          <p className="text-[10px] text-slate-400 italic">{organization?.footerText || "Official Record of Institution"}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>

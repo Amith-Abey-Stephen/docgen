@@ -24,10 +24,26 @@ export function useCreateReport() {
     },
   });
 }
+export function useUpdateReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<InsertReport> }) =>
+      apiRequest<Report>(`/api/reports/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+    },
+  });
+}
+
 export function usePreviewReport() {
   return useMutation({
     mutationFn: (details: string) =>
-      apiRequest<{ content: string }>("/api/reports/preview", {
+      apiRequest<{ content: any }>("/api/reports/preview", {
         method: "POST",
         body: JSON.stringify({ details }),
       }),

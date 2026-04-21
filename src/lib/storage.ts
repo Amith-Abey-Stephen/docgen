@@ -47,13 +47,15 @@ const organizationSchema = new mongoose.Schema({
   headerImagePublicId: { type: String, default: "" },
   footerImagePublicId: { type: String, default: "" },
   plan: { type: String, default: "starter" },
+  signatureLeftLabel: { type: String, default: "Event Coordinator" },
+  signatureRightLabel: { type: String, default: "Head of Department" },
+  signatureRightName: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
 });
 
 const siteSettingsSchema = new mongoose.Schema({
   platformName: { type: String, required: true },
   supportEmail: { type: String, required: true },
-  defaultOrganizationName: { type: String, required: true },
   maintenanceMode: { type: Boolean, default: false },
   maintenanceMessage: { type: String, default: "The platform is currently in maintenance mode." },
   allowPublicSignup: { type: Boolean, default: true },
@@ -133,24 +135,11 @@ const AuditLogModel = mongoose.models.AuditLog || mongoose.model("AuditLog", aud
 export async function ensureSeedData() {
   await connectToDatabase();
 
-  const existingOrgs = await OrganizationModel.find({});
-  let defaultOrganization = existingOrgs[0];
-
-  if (existingOrgs.length === 0) {
-    defaultOrganization = await new OrganizationModel({
-      name: "Default Organization",
-      slug: "default-org",
-      description: "Seeded default organization",
-      isActive: true,
-    }).save();
-  }
-
   const existingSettings = await SiteSettingsModel.findOne({});
   if (!existingSettings) {
     await new SiteSettingsModel({
       platformName: "Mr DocGen",
-      supportEmail: "support@example.com",
-      defaultOrganizationName: "Default Organization",
+      supportEmail: "support@inovuslabs.org",
       maintenanceMode: false,
       allowPublicSignup: true,
       defaultUserRole: "member",
@@ -160,64 +149,16 @@ export async function ensureSeedData() {
 
   const existingUsers = await UserModel.find({});
   const hasSuperAdmin = existingUsers.some((u) => u.role === "super_admin");
-  let memberUser = existingUsers.find((u) => u.role === "member") || null;
 
   if (!hasSuperAdmin) {
-    const hashedPassword = await bcrypt.hash("password", 10);
+    const hashedPassword = await bcrypt.hash("123456789", 10);
     await new UserModel({
-      email: "superadmin@example.com",
+      email: "superadmin@gmail.com",
       password: hashedPassword,
       name: "Super Admin",
       role: "super_admin",
       organizationId: undefined,
     }).save();
-  }
-
-  // Only seed additional default accounts if the database is effectively empty
-  if (existingUsers.length < 2) {
-    if (!existingUsers.find((u) => u.email === "admin@example.com")) {
-      const hashedPassword = await bcrypt.hash("password", 10);
-      const orgId = String(defaultOrganization._id);
-      await new UserModel({
-        email: "admin@example.com",
-        password: hashedPassword,
-        name: "Admin User",
-        role: "admin",
-        organizationId: orgId,
-        organizationIds: [orgId],
-      }).save();
-    }
-
-    if (!memberUser) {
-      const hashedPassword = await bcrypt.hash("password", 10);
-      const orgId = String(defaultOrganization._id);
-      memberUser = await new UserModel({
-        email: "member@example.com",
-        password: hashedPassword,
-        name: "Member User",
-        role: "member",
-        organizationId: orgId,
-        organizationIds: [orgId],
-      }).save();
-    }
-  }
-
-  const existingReports = await ReportModel.find({});
-  if (existingReports.length === 0 && memberUser) {
-    await ReportModel.insertMany([
-      {
-        userId: String(memberUser._id),
-        title: "Q1 Performance",
-        details: "Analyze Q1 sales and marketing performance.",
-        content: "This is a mock generated report content based on your details: Analyze Q1 sales and marketing performance.",
-      },
-      {
-        userId: String(memberUser._id),
-        title: "Employee Satisfaction",
-        details: "Summarize the recent survey results.",
-        content: "This is a mock generated report content based on your details: Summarize the recent survey results.",
-      },
-    ]);
   }
 }
 
@@ -345,8 +286,8 @@ export async function getScopedReportsForAdmin(adminUser: User) {
 export async function generateReportContent(details: string) {
   try {
     const data = JSON.parse(details);
-    const keywords = `${data.title}, ${data.report}, ${data.outcome}`;
-    return await generateReportAI(keywords);
+    const context = `Event Title: ${data.title}, Date: ${data.date}, Organizing Team: ${data.department}, Mode: ${data.mode}, Participants: ${data.students} students and ${data.faculties} faculties, Coordinator: ${data.coordinator}. Additional Keywords: ${data.report}`;
+    return await generateReportAI(context);
   } catch {
     return await generateReportAI(details);
   }
@@ -357,19 +298,39 @@ export async function deleteReport(id: string) {
   await ReportModel.findByIdAndDelete(id);
 }
 
+export async function updateReport(id: string, input: Partial<InsertReport>) {
+  await connectToDatabase();
+  
+  let updateData: any = { ...input };
+  
+  if (input.details) {
+    const content = await generateReportContent(input.details);
+    updateData.content = JSON.stringify(content);
+  }
+  
+  const report = await ReportModel.findByIdAndUpdate(
+    id,
+    { $set: updateData },
+    { new: true }
+  );
+  
+  if (!report) return null;
+  return report.toJSON() as Report;
+}
+
 export async function createReport(input: InsertReport) {
   await connectToDatabase();
   const content = await generateReportContent(input.details);
   const report = new ReportModel({
     ...input,
-    content,
+    content: JSON.stringify(content),
   });
   await report.save();
   return report.toJSON() as Report;
 }
 
 export async function previewReport(details: string) {
-  return generateReportContent(details);
+  return await generateReportContent(details);
 }
 
 export async function getOrganizationsByIds(ids: string[]) {
