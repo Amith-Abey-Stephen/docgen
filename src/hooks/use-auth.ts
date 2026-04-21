@@ -14,7 +14,7 @@ type AuthContextValue = {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, name: string, password: string) => Promise<void>;
+  register: (email: string, name: string, password: string, otpCode: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -76,12 +76,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (email: string, name: string, password: string) => {
+  const register = async (email: string, name: string, password: string, otpCode: string) => {
     setIsLoading(true);
     try {
       const data = await apiRequest<{ user: User; token: string }>("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, name, password }),
+        body: JSON.stringify({ email, name, password, otpCode }),
       });
       setUser(data.user);
       await queryClient.invalidateQueries();
